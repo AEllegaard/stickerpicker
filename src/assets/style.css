@@ -8,15 +8,40 @@
 
 body {
   display: flex;
+  background-color: #ececec;
+  margin: 0;
+  padding: 0;
 }
 
 #root {
   width: 100%;
-  overflow: auto;
-  padding: var(--space-medium);
-}
+  overflow: auto;}
 
 img {
   max-width: 100%;
   height: auto;
+}
+
+h1{
+  font-weight: 800;
+  font-size: 2rem;
+  color: black;
+  margin: 1rem 0rem 0rem 0.5rem;
+}
+
+p{
+  font-weight: 200;
+  font-size: 1rem;
+  color: black;
+}
+
+.canvas{
+  position: relative;
+  border: solid 0.5px #000;
+  margin: 0rem 0.5rem;
+}
+
+.butn{
+  margin-top: 1rem;
+  margin-left: 0.5rem;
 }
