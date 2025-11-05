@@ -78,7 +78,7 @@ class Deco {
   }
   stopDrag() { this.dragging = false; }
   angleToOrigin() {
-    return Math.atan2(this.y, this.x); // peg mod (0,0)
+    return Math.atan2(0, 0); // peg mod (0,0)
   }
   draw() {
     const p = this.p;
