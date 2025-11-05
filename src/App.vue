@@ -85,7 +85,7 @@ class Deco {
     p.push();
     p.translate(this.x, this.y);
     p.rotate(this.angleToOrigin());
-    p.imageMode(p.CENTER);
+    p.imageMode(p.CORNERS);
     p.image(this.img, 0, 0, this.w, this.h);
     p.pop();
   }
