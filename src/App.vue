@@ -130,6 +130,8 @@ const makeSketch = (p) => {
       p.fill(205);
       p.rect(0,250, 330, 150)
 
+      p.imageMode(p.CENTER);
+
     if (faces.length > 0) {
       const face = faces[0];
 
