@@ -4,8 +4,6 @@ import './assets/style.css';
 
 // IMPORTÉR DINE BILLEDER (Vite håndterer paths i build)
 import hatSrc from './assets/hat.webp';
-import sunniesSrc from './assets/sunnies.webp';
-
 const canvasHost = ref(null);
 
 // UI state
@@ -38,8 +36,7 @@ const VID_W = 330, VID_H = 240;
 
 // palette-ikoner (nede i panelet)
 const palette = [
-  { key: 'hat',     src: hatSrc,     x:  55, y: 320, w: 60, h: 60 },
-  { key: 'sunnies', src: sunniesSrc, x: 135, y: 320, w: 60, h: 60 },
+  { key: 'hat',     src: hatSrc,     x:  55, y: 320, w: 60, h: 60 }
 ];
 
 // robust Miro-detektion
@@ -102,7 +99,6 @@ const makeSketch = (p) => {
   p.preload = () => {
     // preload via Vite-importerede URLs
     p.assets.hat     = p.loadImage(hatSrc);
-    p.assets.sunnies = p.loadImage(sunniesSrc);
   };
 
   p.setup = () => {
