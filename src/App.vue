@@ -12,6 +12,10 @@ const buttonLabel = ref('Save sticker locally');
 let P5, ml5, pInstance = null, faceMesh = null;
 let faces = [];
 
+//sprites
+let sunniesImg, hatImg, capImg, eyesImg, bowtieImg;
+let sunnies, hat, cap, eyes, bowtie;
+
 // fallback loop stopper
 let stopManualDetect = null;
 
@@ -43,11 +47,20 @@ async function probeMiro() {
 }
 
 const makeSketch = (p) => {
+  p.preload = () => {
+    //preload billederne der skal bruges til decor
+    p.hatImg = p.loadImage('/assets/hat.webp');
+  };
+
   p.setup = () => {
     p.pixelDensity(1);
-
+    p.iamgeMode(p.CENTER);
+    p.angleMode(p.DEGREES);
     const cnv = p.createCanvas(330, 390);
     cnv.parent(canvasHost.value);
+
+    //sprites
+    hat = p.createSprite(165, 130);
 
     // kamera
     g.video = p.createCapture({ video: { facingMode: 'user', width: VID_W, height: VID_H }, audio: false });
