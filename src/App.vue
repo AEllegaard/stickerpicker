@@ -224,7 +224,7 @@ const makeSketch = (p) => {
       const fb = currentFaceBounds();
 
       //basis på 70% af ansigts bredden
-      let base = fb ? Math.max(fb.w, fb.h) * 0.7 : 110;
+      let base = fb ? Math.max(fb.w, fb.h) * 1 : 110;
 
       //hold den inden for grænserne
       base = Math.max(80, Math.min(base, 220));
