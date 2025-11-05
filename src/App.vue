@@ -114,6 +114,10 @@ const makeSketch = (p) => {
       g.pg.pop();
     }
 
+    //decor
+      p.fill(0);
+      p.rect(0,0,30, 30)
+
     if (faces.length > 0) {
       const face = faces[0];
 
