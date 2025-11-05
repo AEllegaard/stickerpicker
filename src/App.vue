@@ -27,7 +27,7 @@ let g = {
   maskedImg: null,
 };
 
-const VID_W = 320, VID_H = 240;
+const VID_W = 330, VID_H = 240;
 
 // robust Miro-detektion: prøv et SDK-kald
 async function probeMiro() {
@@ -115,8 +115,9 @@ const makeSketch = (p) => {
     }
 
     //decor
+      p.noStroke();
       p.fill(205);
-      p.rect(0,250, VID_W, 100)
+      p.rect(0,300, 330, 100)
 
     if (faces.length > 0) {
       const face = faces[0];
