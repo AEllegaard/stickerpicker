@@ -2,7 +2,7 @@
 import { onMounted, onBeforeUnmount, ref } from 'vue';
 import './assets/style.css';
 
-// kun hatten
+// import deco-ressourcer
 import hatSrc from './assets/hat.webp';
 
 const canvasHost = ref(null);
@@ -512,9 +512,11 @@ onBeforeUnmount(() => {
 <template>
   <div id="root">
     <div class="grid wrapper">
+      <!--
       <div class="cs1 ce12">
         <h1>Sticker Picker</h1>
       </div>
+      -->
 
       <div class="canvas cs1 ce12">
         <div ref="canvasHost" style="min-height: 400px;"></div>
