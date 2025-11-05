@@ -115,8 +115,8 @@ const makeSketch = (p) => {
     }
 
     //decor
-      p.fill(0);
-      p.rect(0,0,30, 30)
+      p.fill(205);
+      p.rect(0,250, VID_W, 100)
 
     if (faces.length > 0) {
       const face = faces[0];
