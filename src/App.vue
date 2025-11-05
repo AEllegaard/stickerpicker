@@ -55,7 +55,7 @@ const makeSketch = (p) => {
 
   p.setup = () => {
     p.pixelDensity(1);
-    p.imageMode(p.CENTER);
+    //p.imageMode(p.CENTER);
     p.angleMode(p.DEGREES);
     const cnv = p.createCanvas(330, 390);
     cnv.parent(canvasHost.value);
