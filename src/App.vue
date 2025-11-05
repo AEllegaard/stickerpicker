@@ -131,6 +131,7 @@ const makeSketch = (p) => {
       p.rect(0,250, 330, 150)
       p.push();
       p.imageMode(p.CENTER);
+      p.image(p.hatImg, 50, 270, 50, 50);
       p.pop();
 
     if (faces.length > 0) {
