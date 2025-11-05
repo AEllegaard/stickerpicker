@@ -2,8 +2,9 @@
 import { onMounted, onBeforeUnmount, ref } from 'vue';
 import './assets/style.css';
 
-// IMPORTÉR DINE BILLEDER (Vite håndterer paths i build)
+// kun hatten
 import hatSrc from './assets/hat.webp';
+
 const canvasHost = ref(null);
 
 // UI state
@@ -36,7 +37,7 @@ const VID_W = 330, VID_H = 240;
 
 // palette-ikoner (nede i panelet)
 const palette = [
-  { key: 'hat',     src: hatSrc,     x:  55, y: 320, w: 60, h: 60 }
+  { key: 'hat', src: hatSrc, x: 55, y: 320, w: 60, h: 60 }
 ];
 
 // robust Miro-detektion
@@ -52,7 +53,7 @@ async function probeMiro() {
   }
 }
 
-// Et simpelt deco-objekt
+// simpelt deco-objekt
 class Deco {
   constructor(p, img, x, y, w, h) {
     this.p = p;
@@ -63,7 +64,6 @@ class Deco {
     this._dx = 0; this._dy = 0;
   }
   contains(mx, my) {
-    // grov box-test omkring midten
     return Math.abs(mx - this.x) <= this.w/2 && Math.abs(my - this.y) <= this.h/2;
   }
   startDrag(mx, my) {
@@ -78,14 +78,13 @@ class Deco {
   }
   stopDrag() { this.dragging = false; }
   angleToOrigin() {
-    // peg mod (0,0)
-    return Math.atan2(this.y - 0, this.x - 0);
+    return Math.atan2(this.y, this.x); // peg mod (0,0)
   }
   draw() {
     const p = this.p;
     p.push();
     p.translate(this.x, this.y);
-    p.rotate(this.angleToOrigin());  // roter mod (0,0)
+    p.rotate(this.angleToOrigin());
     p.imageMode(p.CENTER);
     p.image(this.img, 0, 0, this.w, this.h);
     p.pop();
@@ -93,17 +92,15 @@ class Deco {
 }
 
 const makeSketch = (p) => {
-  // assets i p5-format
   p.assets = {};
 
   p.preload = () => {
-    // preload via Vite-importerede URLs
-    p.assets.hat     = p.loadImage(hatSrc);
+    p.assets.hat = p.loadImage(hatSrc);
   };
 
   p.setup = () => {
     p.pixelDensity(1);
-    p.angleMode(p.RADIANS); // vi bruger radians med Math.atan2
+    p.angleMode(p.RADIANS);
     p.createCanvas(330, 390);
 
     // kamera
@@ -216,23 +213,30 @@ const makeSketch = (p) => {
     for (const d of decos) d.draw();
   };
 
-  // klik i paletten: opret et nyt deco
+  // klik i paletten: opret nyt deco
   p.mousePressed = () => {
-    // 1) hvis vi rammer en palette-ikon, tilføj et nyt deco
     const hit = hitPalette(p.mouseX, p.mouseY);
     if (hit) {
-      // placer ved ansigtets centrum hvis muligt, ellers midt i video
       const pos = faceCenterOrFallback();
       const img = p.assets[hit.key];
-      decos.push(new Deco(p, img, pos.x, pos.y, 90, 90));
+
+      //find ansigts bredden
+      const fb = currentFaceBounds();
+
+      //basis på 70% af ansigts bredden
+      let base = fb ? Math.max(fb.w, fb.h) * 0.7 : 110;
+
+      //hold den inden for grænserne
+      base = Math.max(80, Math.min(base, 220));
+
+      decos.push(new Deco(p, img, pos.x, pos.y, base, base));
       return;
     }
-    // 2) ellers forsøg at gribe et eksisterende deco (øverst først)
+    // grib eksisterende deco (øverst først)
     for (let i = decos.length - 1; i >= 0; i--) {
       const d = decos[i];
       if (d.contains(p.mouseX, p.mouseY)) {
         d.startDrag(p.mouseX, p.mouseY);
-        // bring to front
         const [grab] = decos.splice(i, 1);
         decos.push(grab);
         return;
@@ -240,15 +244,21 @@ const makeSketch = (p) => {
     }
   };
 
-  p.mouseDragged = () => {
-    for (const d of decos) d.drag(p.mouseX, p.mouseY);
-  };
-  p.mouseReleased = () => {
-    for (const d of decos) d.stopDrag();
+  p.mouseDragged = () => { for (const d of decos) d.drag(p.mouseX, p.mouseY); };
+  p.mouseReleased = () => { for (const d of decos) d.stopDrag(); };
+
+  // NYT: dobbeltklik fjerner øverste deco under musen
+  p.doubleClicked = () => {
+    for (let i = decos.length - 1; i >= 0; i--) {
+      if (decos[i].contains(p.mouseX, p.mouseY)) {
+        decos.splice(i, 1);
+        break;
+      }
+    }
+    return false; // forhindre evt. default
   };
 
   function drawPalette(p) {
-    // panel
     p.noStroke();
     p.fill(205);
     p.rect(0, 250, 330, 140);
@@ -257,7 +267,6 @@ const makeSketch = (p) => {
     p.textSize(12);
     p.text('Decor', 10, 265);
 
-    // ikoner
     for (const item of palette) {
       const img = p.assets[item.key];
       if (!img) continue;
@@ -266,7 +275,6 @@ const makeSketch = (p) => {
       p.image(img, item.x, item.y, item.w, item.h);
       p.pop();
 
-      // hover markering
       if (dist2(p.mouseX, p.mouseY, item.x, item.y) < (Math.max(item.w, item.h)/2)**2) {
         p.noFill(); p.stroke(0); p.strokeWeight(1);
         p.rect(item.x - item.w/2 - 4, item.y - item.h/2 - 4, item.w + 8, item.h + 8);
@@ -292,7 +300,6 @@ const makeSketch = (p) => {
       cx /= faceOutline.length; cy /= faceOutline.length;
       return { x: cx, y: cy };
     }
-    // midten af videoområdet
     return { x: VID_W/2, y: VID_H/2 };
   }
 };
@@ -334,7 +341,6 @@ function waitForModel(fm, timeoutMs = 15000) {
   });
 }
 
-// fallback: manuelt detection-loop
 function startManualDetectLoop() {
   let alive = true;
   const step = async () => {
@@ -349,8 +355,29 @@ function startManualDetectLoop() {
   stopManualDetect = () => { alive = false; };
 }
 
+function currentFaceBounds(){
+  if (faces.length === 0) return null;
+  const face = faces[0];
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  for (let i = 0; i < faceOutline.length; i++) {
+    const kp = face.keypoints[faceOutline[i]];
+    if (kp.x < minX) minX = kp.x;
+    if (kp.x > maxX) maxX = kp.x;
+    if (kp.y < minY) minY = kp.y;
+    if (kp.y > maxY) maxY = kp.y;
+  }
+  return { 
+    x: minX,
+    y: minY,
+    w: maxX - minX,
+    h: maxY - minY,
+    cx: (minX + maxX) / 2,
+    cy: (minY + maxY) / 2
+  };
+}
+
+
 async function buildStickerPNG(p) {
-  // kræver g.maskedImg og faces[0]
   const face = faces[0];
 
   // bbox omkring face
@@ -368,17 +395,16 @@ async function buildStickerPNG(p) {
   const centerX = (minX + maxX) / 2;
   const centerY = (minY + maxY) / 2;
 
-  // bygger endeligt sticker-billede i offscreen square med gennemsigtig baggrund
+  // byg sticker på offscreen square
   const square = p.createGraphics(size, size);
   square.pixelDensity(1);
   square.clear();
 
-  // læg ansigtsmasken
   const offsetX = size / 2 - centerX;
   const offsetY = size / 2 - centerY;
   square.image(g.maskedImg, offsetX, offsetY);
 
-  // outline ovenpå
+  // outline
   let cx = 0, cy = 0;
   for (let i = 0; i < faceOutline.length; i++) {
     const kp = face.keypoints[faceOutline[i]];
@@ -403,9 +429,9 @@ async function buildStickerPNG(p) {
   square.endShape(p.CLOSE);
   square.pop();
 
-  // læg alle decos ovenpå (med samme rotation som i preview)
+  // læg alle decos ovenpå (samme rotation)
   for (const d of decos) {
-    const angle = Math.atan2(d.y - 0, d.x - 0); // mod origo
+    const angle = Math.atan2(d.y, d.x);
     const dx = d.x - centerX + size/2;
     const dy = d.y - centerY + size/2;
 
@@ -417,7 +443,6 @@ async function buildStickerPNG(p) {
     square.pop();
   }
 
-  // data URL med alfa
   const dataUrl = square.canvas.toDataURL('image/png');
   return dataUrl;
 }
@@ -434,7 +459,6 @@ async function pasteSticker() {
   try {
     await window.miro?.board?.getInfo();
 
-    // placér ved viewport-center
     const viewport = await window.miro.board.viewport.get();
     const { x, y, width, height } = viewport;
     const cx = x + width / 2;
@@ -465,7 +489,6 @@ onMounted(async () => {
   inMiroRef.value = await probeMiro();
   buttonLabel.value = inMiroRef.value ? 'Paste sticker on the board' : 'Save sticker locally';
 
-  // giv containeren til p5 her, så parent altid er korrekt
   pInstance = new P5(makeSketch, canvasHost.value);
   window.__p5instance = pInstance;
 
