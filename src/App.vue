@@ -1,6 +1,7 @@
 <script setup>
 import { onMounted, onBeforeUnmount, ref } from 'vue';
 import './assets/style.css';
+import hatSrc from './assets/hat.webp';
 
 const canvasHost = ref(null);
 
@@ -49,7 +50,7 @@ async function probeMiro() {
 const makeSketch = (p) => {
   p.preload = () => {
     //preload billederne der skal bruges til decor
-    p.hatImg = p.loadImage('/assets/hat.webp');
+    p.hatImg = p.loadImage(hatSrc);
   };
 
   p.setup = () => {
@@ -58,9 +59,6 @@ const makeSketch = (p) => {
     p.angleMode(p.DEGREES);
     const cnv = p.createCanvas(330, 390);
     cnv.parent(canvasHost.value);
-
-    //sprites
-    hat = p.createSprite(165, 130);
 
     // kamera
     g.video = p.createCapture({ video: { facingMode: 'user', width: VID_W, height: VID_H }, audio: false });
