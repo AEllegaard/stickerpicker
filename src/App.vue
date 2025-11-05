@@ -1,7 +1,10 @@
 <script setup>
 import { onMounted, onBeforeUnmount, ref } from 'vue';
 import './assets/style.css';
+
+// IMPORTÉR DINE BILLEDER (Vite håndterer paths i build)
 import hatSrc from './assets/hat.webp';
+import sunniesSrc from './assets/sunnies.webp';
 
 const canvasHost = ref(null);
 
@@ -13,9 +16,8 @@ const buttonLabel = ref('Save sticker locally');
 let P5, ml5, pInstance = null, faceMesh = null;
 let faces = [];
 
-//sprites
-let sunniesImg, hatImg, capImg, eyesImg, bowtieImg;
-let sunnies, hat, cap, eyes, bowtie;
+// deco-objekter på lærredet
+let decos = [];
 
 // fallback loop stopper
 let stopManualDetect = null;
@@ -34,7 +36,13 @@ let g = {
 
 const VID_W = 330, VID_H = 240;
 
-// robust Miro-detektion: prøv et SDK-kald
+// palette-ikoner (nede i panelet)
+const palette = [
+  { key: 'hat',     src: hatSrc,     x:  55, y: 320, w: 60, h: 60 },
+  { key: 'sunnies', src: sunniesSrc, x: 135, y: 320, w: 60, h: 60 },
+];
+
+// robust Miro-detektion
 async function probeMiro() {
   try {
     if (typeof window !== 'undefined' && window.miro && window.miro.board) {
@@ -47,18 +55,60 @@ async function probeMiro() {
   }
 }
 
+// Et simpelt deco-objekt
+class Deco {
+  constructor(p, img, x, y, w, h) {
+    this.p = p;
+    this.img = img;
+    this.x = x; this.y = y;
+    this.w = w; this.h = h;
+    this.dragging = false;
+    this._dx = 0; this._dy = 0;
+  }
+  contains(mx, my) {
+    // grov box-test omkring midten
+    return Math.abs(mx - this.x) <= this.w/2 && Math.abs(my - this.y) <= this.h/2;
+  }
+  startDrag(mx, my) {
+    this.dragging = true;
+    this._dx = mx - this.x;
+    this._dy = my - this.y;
+  }
+  drag(mx, my) {
+    if (!this.dragging) return;
+    this.x = mx - this._dx;
+    this.y = my - this._dy;
+  }
+  stopDrag() { this.dragging = false; }
+  angleToOrigin() {
+    // peg mod (0,0)
+    return Math.atan2(this.y - 0, this.x - 0);
+  }
+  draw() {
+    const p = this.p;
+    p.push();
+    p.translate(this.x, this.y);
+    p.rotate(this.angleToOrigin());  // roter mod (0,0)
+    p.imageMode(p.CENTER);
+    p.image(this.img, 0, 0, this.w, this.h);
+    p.pop();
+  }
+}
+
 const makeSketch = (p) => {
+  // assets i p5-format
+  p.assets = {};
+
   p.preload = () => {
-    //preload billederne der skal bruges til decor
-    p.hatImg = p.loadImage(hatSrc);
+    // preload via Vite-importerede URLs
+    p.assets.hat     = p.loadImage(hatSrc);
+    p.assets.sunnies = p.loadImage(sunniesSrc);
   };
 
   p.setup = () => {
     p.pixelDensity(1);
-    //p.imageMode(p.CENTER);
-    p.angleMode(p.DEGREES);
-    const cnv = p.createCanvas(330, 390);
-    cnv.parent(canvasHost.value);
+    p.angleMode(p.RADIANS); // vi bruger radians med Math.atan2
+    p.createCanvas(330, 390);
 
     // kamera
     g.video = p.createCapture({ video: { facingMode: 'user', width: VID_W, height: VID_H }, audio: false });
@@ -73,10 +123,8 @@ const makeSketch = (p) => {
 
     // ml5 init
     (async () => {
-      // vent på video
       await waitForVideo(g.video.elt);
 
-      // vælg tf backend
       try {
         const tf = ml5?.tf;
         if (tf?.setBackend) {
@@ -85,17 +133,14 @@ const makeSketch = (p) => {
         }
       } catch {}
 
-      // facemesh
       faceMesh = await ml5.faceMesh({
         maxFaces: 1,
         refineLandmarks: false,
         flipped: true
       });
 
-      // vent på intern model
       await waitForModel(faceMesh, 15000);
 
-      // stream-detection
       try {
         faceMesh.detectStart(g.video.elt, (results) => { faces = results || []; });
         console.log('FaceMesh detectStart kører');
@@ -107,7 +152,6 @@ const makeSketch = (p) => {
   };
 
   p.draw = () => {
-    // previewen må gerne have baggrund, men PNG’en vi bygger er separat og gennemsigtig
     p.background(220);
 
     // ryd buffers
@@ -116,28 +160,17 @@ const makeSketch = (p) => {
     g.maskG.noStroke();
     g.maskG.fill(255);
 
-    // spejl video ind i pg, så pixels matcher flipped keypoints
+    // spejl video ind i pg
     if (g.video) {
       g.pg.push();
       g.pg.translate(VID_W, 0);
-      g.pg.scale( -1, 1 );
+      g.pg.scale(-1, 1);
       g.pg.image(g.video, 0, 0, VID_W, VID_H);
       g.pg.pop();
     }
 
-    //decor
-      p.noStroke();
-      p.fill(205);
-      p.rect(0,250, 330, 150)
-      p.push();
-      p.imageMode(p.CENTER);
-      p.image(p.hatImg, 50, 290, 100, 100);
-      p.pop();
-
-      if (hatImg.mouse.dragging()) {
-        hatImg.x = p.mouseX;
-        hatImg.y = p.mouseY;
-      }
+    // dekorationspanel
+    drawPalette(p);
 
     if (faces.length > 0) {
       const face = faces[0];
@@ -159,12 +192,11 @@ const makeSketch = (p) => {
       }
       g.maskG.endShape(p.CLOSE);
 
-      // frisk kopi hver frame, da mask() er destruktiv
       const masked = g.pg.get();
       masked.mask(g.maskG.get());
       g.maskedImg = masked;
 
-      // tegn det udklippede ansigt i preview
+      // ansigt
       p.image(g.maskedImg, 0, 0, VID_W, VID_H);
 
       // outline
@@ -183,10 +215,95 @@ const makeSketch = (p) => {
     } else {
       g.maskedImg = null;
     }
+
+    // tegn alle decos ovenpå
+    for (const d of decos) d.draw();
   };
+
+  // klik i paletten: opret et nyt deco
+  p.mousePressed = () => {
+    // 1) hvis vi rammer en palette-ikon, tilføj et nyt deco
+    const hit = hitPalette(p.mouseX, p.mouseY);
+    if (hit) {
+      // placer ved ansigtets centrum hvis muligt, ellers midt i video
+      const pos = faceCenterOrFallback();
+      const img = p.assets[hit.key];
+      decos.push(new Deco(p, img, pos.x, pos.y, 90, 90));
+      return;
+    }
+    // 2) ellers forsøg at gribe et eksisterende deco (øverst først)
+    for (let i = decos.length - 1; i >= 0; i--) {
+      const d = decos[i];
+      if (d.contains(p.mouseX, p.mouseY)) {
+        d.startDrag(p.mouseX, p.mouseY);
+        // bring to front
+        const [grab] = decos.splice(i, 1);
+        decos.push(grab);
+        return;
+      }
+    }
+  };
+
+  p.mouseDragged = () => {
+    for (const d of decos) d.drag(p.mouseX, p.mouseY);
+  };
+  p.mouseReleased = () => {
+    for (const d of decos) d.stopDrag();
+  };
+
+  function drawPalette(p) {
+    // panel
+    p.noStroke();
+    p.fill(205);
+    p.rect(0, 250, 330, 140);
+
+    p.fill(30);
+    p.textSize(12);
+    p.text('Decor', 10, 265);
+
+    // ikoner
+    for (const item of palette) {
+      const img = p.assets[item.key];
+      if (!img) continue;
+      p.push();
+      p.imageMode(p.CENTER);
+      p.image(img, item.x, item.y, item.w, item.h);
+      p.pop();
+
+      // hover markering
+      if (dist2(p.mouseX, p.mouseY, item.x, item.y) < (Math.max(item.w, item.h)/2)**2) {
+        p.noFill(); p.stroke(0); p.strokeWeight(1);
+        p.rect(item.x - item.w/2 - 4, item.y - item.h/2 - 4, item.w + 8, item.h + 8);
+      }
+    }
+  }
+
+  function hitPalette(mx, my) {
+    for (const item of palette) {
+      const dx = mx - item.x, dy = my - item.y;
+      if (dx*dx + dy*dy <= (Math.max(item.w, item.h)/2)**2) return item;
+    }
+    return null;
+  }
+
+  function faceCenterOrFallback() {
+    if (faces.length > 0) {
+      let cx = 0, cy = 0;
+      for (let i = 0; i < faceOutline.length; i++) {
+        const kp = faces[0].keypoints[faceOutline[i]];
+        cx += kp.x; cy += kp.y;
+      }
+      cx /= faceOutline.length; cy /= faceOutline.length;
+      return { x: cx, y: cy };
+    }
+    // midten af videoområdet
+    return { x: VID_W/2, y: VID_H/2 };
+  }
 };
 
 // hjælpere
+function dist2(x1,y1,x2,y2){ const dx=x1-x2, dy=y1-y2; return dx*dx+dy*dy; }
+
 function waitForVideo(videoEl, timeoutMs = 10000) {
   return new Promise((resolve, reject) => {
     const t0 = performance.now();
@@ -229,9 +346,7 @@ function startManualDetectLoop() {
     try {
       const res = await faceMesh.detect(g.video.elt);
       faces = Array.isArray(res) ? res : (res?.faces || []);
-    } catch {
-      // prøv igen næste frame
-    }
+    } catch {}
     requestAnimationFrame(step);
   };
   step();
@@ -257,14 +372,15 @@ async function buildStickerPNG(p) {
   const centerX = (minX + maxX) / 2;
   const centerY = (minY + maxY) / 2;
 
-  // byg endelig sticker i offscreen square med gennemsigtig baggrund
+  // bygger endeligt sticker-billede i offscreen square med gennemsigtig baggrund
   const square = p.createGraphics(size, size);
   square.pixelDensity(1);
-  square.clear(); // gennemsigtig baggrund
+  square.clear();
 
+  // læg ansigtsmasken
   const offsetX = size / 2 - centerX;
   const offsetY = size / 2 - centerY;
-  square.image(g.maskedImg, offsetX, offsetY); // maskedImg har alfa uden for masken
+  square.image(g.maskedImg, offsetX, offsetY);
 
   // outline ovenpå
   let cx = 0, cy = 0;
@@ -291,6 +407,20 @@ async function buildStickerPNG(p) {
   square.endShape(p.CLOSE);
   square.pop();
 
+  // læg alle decos ovenpå (med samme rotation som i preview)
+  for (const d of decos) {
+    const angle = Math.atan2(d.y - 0, d.x - 0); // mod origo
+    const dx = d.x - centerX + size/2;
+    const dy = d.y - centerY + size/2;
+
+    square.push();
+    square.translate(dx, dy);
+    square.rotate(angle);
+    square.imageMode(square.CENTER);
+    square.image(d.img, 0, 0, d.w, d.h);
+    square.pop();
+  }
+
   // data URL med alfa
   const dataUrl = square.canvas.toDataURL('image/png');
   return dataUrl;
@@ -303,33 +433,23 @@ async function pasteSticker() {
   }
 
   const p = pInstance;
-  const dataUrl = await buildStickerPNG(p); // "data:image/png;base64,...."
+  const dataUrl = await buildStickerPNG(p);
 
   try {
-    // er vi i Miro og har board access?
     await window.miro?.board?.getInfo();
 
-    // 👉 v2 kræver `url:` – data-URL er OK; blob: er IKKE OK
-  // hent brugerens aktuelle viewport
-const viewport = await window.miro.board.viewport.get();
-const { x, y, width, height } = viewport;
+    // placér ved viewport-center
+    const viewport = await window.miro.board.viewport.get();
+    const { x, y, width, height } = viewport;
+    const cx = x + width / 2;
+    const cy = y + height / 2;
 
-// beregn centrum
-const cx = x + width / 2;
-const cy = y + height / 2;
-
-// indsæt billedet dér
-const created = await window.miro.board.createImage({
-  url: dataUrl,
-  x: cx,
-  y: cy,
-  title: 'sticker.png',
-});
-
-// zoom pænt ind på det nye element
-await window.miro.board.viewport.zoomTo(created);
-
-
+    const created = await window.miro.board.createImage({
+      url: dataUrl,
+      x: cx,
+      y: cy,
+      title: 'sticker.png',
+    });
     await window.miro.board.viewport.zoomTo(created);
   } catch (e) {
     console.warn('Ikke i Miro eller createImage fejlede. Gemmer lokalt.', e);
@@ -340,7 +460,6 @@ await window.miro.board.viewport.zoomTo(created);
   }
 }
 
-
 onMounted(async () => {
   const p5Mod = await import('p5');
   P5 = p5Mod.default;
@@ -350,7 +469,8 @@ onMounted(async () => {
   inMiroRef.value = await probeMiro();
   buttonLabel.value = inMiroRef.value ? 'Paste sticker on the board' : 'Save sticker locally';
 
-  pInstance = new P5(makeSketch);
+  // giv containeren til p5 her, så parent altid er korrekt
+  pInstance = new P5(makeSketch, canvasHost.value);
   window.__p5instance = pInstance;
 
   if (!inMiroRef.value) {
