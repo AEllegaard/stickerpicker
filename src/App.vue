@@ -78,10 +78,10 @@ class Deco {
   }
   stopDrag() { this.dragging = false; }
   angleToOrigin() {
-    if (this.x > VID_W/2){
+    if (this.x > VID_W/2 + 25){
       return Math.atan2(this.y, this.x); // peg mod (0,0)
 
-    } if (this.x < VID_W/2){
+    } if (this.x < VID_W/2 - 25){
       return Math.atan2(-this.y, this.x); // peg mod (0,0)
     }
   }
