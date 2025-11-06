@@ -12,8 +12,9 @@ const inMiroRef = ref(false);
 const buttonLabel = ref('Save sticker locally');
 
 // handles
-let P5, ml5, pInstance = null, faceMesh = null;
+let P5, ml5, pInstance = null, faceMesh = null, handModel = null;
 let faces = [];
+let hands = [];
 
 // deco-objekter på lærredet
 let decos = [];
@@ -145,6 +146,22 @@ const makeSketch = (p) => {
       } catch (e) {
         console.warn('detectStart fejlede, skifter til manuelt loop', e);
         startManualDetectLoop();
+      }
+
+      try {
+        handModel = await ml5.handpose({flipped: true});
+        await waitForHandModel(handModel, 15000);
+
+        try {
+          handModel.detectStart(g.video.elt, (results) => { hands = results || []; });
+          console.log('Handpose detectStart kører');
+        } catch (e) {
+          console.warn('Handpose detectStart fejlede, skifter til manuelt loop', e);
+          startManualDetectLoop();
+        }
+      } catch (e) {
+        console.warn('Handpose model load fejlede, fortsætter uden hånddetektion', e);
+
       }
     })().catch(console.error);
   };
@@ -381,6 +398,37 @@ function currentFaceBounds(){
   };
 }
 
+function waitForHandModel(hm, timeoutMs = 15000){
+  return new Promise((resolve, reject) => {
+    const t0 = performance.now();
+    const tick = () => {
+      const ready =
+        !!hm&&
+        (
+          (hm.model && typeof hm.model.estimateHansa === 'function') ||
+          (hm.detector && typeof hm.detector.estimateHands === 'function')
+        );
+      if (ready) return resolve();
+      if (performance.now() - t0 > timeoutMs) return reject(new Error('Handpose model load timeout'));
+      requestAnimationFrame(tick);
+    };
+    tick();
+  });
+}
+
+function startManualHandLoop() {
+  let alive = true;
+  const step = async () => {
+    if (!alive) return;
+    try {
+      const res = await handModel.detect(g.video.elt);
+      hands = Array.isArray(res) ? res : (res?.hands || res?.[0]?.hands || []);
+    } catch {}
+    requestAnimationFrame(step);
+  };
+  step();
+  stopManualDetect = () => { alive = false; };
+}
 
 async function buildStickerPNG(p) {
   const face = faces[0];
