@@ -2,7 +2,7 @@
 import { onMounted, onBeforeUnmount, ref } from 'vue';
 import './assets/style.css';
 
-// deco assets via Vite
+// importér dine deco assets via Vite
 import hatSrc from './assets/hat.webp';
 
 const canvasHost = ref(null);
@@ -20,7 +20,7 @@ let hands = [];
 let handLandmarker = null;
 let handLoopStop = null;
 
-// deco-objekter
+// deco-objekter på lærredet
 let decos = [];
 
 // stop-funktioner til fallback loops
@@ -236,6 +236,17 @@ const makeSketch = (p) => {
 
     // decor: ovenpå
     for (const d of decos) d.draw();
+
+    // DEBUG: vis håndlandmarks som små prikker
+    p.push();
+    p.noStroke();
+    p.fill(0, 200, 100);
+    for (const h of hands) {
+      for (const k of (h.keypoints || [])) {
+        p.circle(k.x, k.y, 4);
+      }
+    }
+    p.pop();
   };
 
   // klik i paletten: opret nyt deco
@@ -389,7 +400,7 @@ function startManualHandLoop() {
   stopManualHandDetect = () => { alive = false; };
 }
 
-// MediaPipe fallback init og loop — mapper til canvas-koordinater og spejler x
+// MediaPipe fallback init og loop — mapper til canvas-koordinater, sænker thresholds, spejler X
 async function initHandsFallback(videoEl, canvasW = VID_W, canvasH = VID_H) {
   const { FilesetResolver, HandLandmarker } = await import('@mediapipe/tasks-vision');
 
@@ -399,10 +410,14 @@ async function initHandsFallback(videoEl, canvasW = VID_W, canvasH = VID_H) {
 
   handLandmarker = await HandLandmarker.createFromOptions(vision, {
     baseOptions: {
-      modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task'
+      modelAssetPath:
+        'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task'
     },
     numHands: 2,
-    runningMode: 'VIDEO'
+    runningMode: 'VIDEO',
+    minHandDetectionConfidence: 0.3,
+    minHandPresenceConfidence: 0.3,
+    minTrackingConfidence: 0.3,
   });
 
   await waitForVideo(videoEl);
@@ -410,28 +425,33 @@ async function initHandsFallback(videoEl, canvasW = VID_W, canvasH = VID_H) {
   let alive = true;
   const step = () => {
     if (!alive || !handLandmarker || !videoEl) return;
+
     try {
-      const vw = videoEl.videoWidth || canvasW;
+      const vw = videoEl.videoWidth  || canvasW;
       const vh = videoEl.videoHeight || canvasH;
       const sx = canvasW / vw;
       const sy = canvasH / vh;
 
-      const result = handLandmarker.detectForVideo(videoEl, performance.now());
+      const res = handLandmarker.detectForVideo(videoEl, performance.now());
+      const lm  = res?.landmarks || [];
 
-      // map til canvas og spejl x for at matche g.pg spejling
-      const mapped = (result?.landmarks || []).map(pts => ({
+      // map til canvas og spejl X for at matche g.pg spejling
+      hands = lm.map(pts => ({
         keypoints: pts.map(pt => {
           let x = pt.x * vw;
           let y = pt.y * vh;
-          x = vw - x;              // spejl
+          x = vw - x;                 // SPEJL
           return { x: x * sx, y: y * sy };
-        })
+        }),
       }));
 
-      hands = mapped;
+      // hvis du vil logge:
+      // if (lm.length) console.log('Hands:', lm.length);
     } catch {}
+
     requestAnimationFrame(step);
   };
+
   requestAnimationFrame(step);
   handLoopStop = () => { alive = false; };
 }
@@ -440,7 +460,7 @@ async function initHandsFallback(videoEl, canvasW = VID_W, canvasH = VID_H) {
 function currentFaceBounds(){
   if (faces.length === 0) return null;
   const face = faces[0];
-  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = Infinity * -1;
   for (let i = 0; i < faceOutline.length; i++) {
     const kp = face.keypoints[faceOutline[i]];
     if (kp.x < minX) minX = kp.x;
@@ -451,7 +471,7 @@ function currentFaceBounds(){
   return { x: minX, y: minY, w: maxX - minX, h: maxY - minY, cx: (minX + maxX)/2, cy: (minY + maxY)/2 };
 }
 
-// alle hånd-bounds (punkter er allerede i canvas-koordinater)
+// alle hånd-bounds
 function currentAllHandBounds() {
   const out = [];
   for (const h of hands || []) {
