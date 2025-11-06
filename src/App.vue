@@ -390,7 +390,7 @@ function startManualHandLoop() {
 }
 
 // MediaPipe fallback init og loop
-async function initHandsFallback(videoEl, vidW, vidH) {
+async function initHandsFallback(videoEl, canvasW = VID_W, canvasH = VID_H) {
   const { FilesetResolver, HandLandmarker } = await import('@mediapipe/tasks-vision');
 
   const vision = await FilesetResolver.forVisionTasks(
@@ -405,13 +405,28 @@ async function initHandsFallback(videoEl, vidW, vidH) {
     runningMode: 'VIDEO'
   });
 
+  await waitForVideo(videoEl);
+
   let alive = true;
   const step = () => {
     if (!alive || !handLandmarker || !videoEl) return;
     try {
-      const res = handLandmarker.detectForVideo(videoEl, performance.now());
-      hands = (res?.landmarks || []).map(pts => ({
-        keypoints: pts.map(pt => ({ x: pt.x * vidW, y: pt.y * vidH }))
+      const vw = videoEl.videoWidth || canvasW;
+      const vh = videoEl.videoHeight || canvasH;
+      const sx = canvasW / vw;
+      const sy = canvasH / vh;
+
+      const result = handLandmarker.detectForVideo(videoEl, performance.now());
+
+      hands = (result?.landmarks || []).map(pts => ({
+        keypoints: pts.map(pt => {
+          let x = pt.x * vw;
+          let y = pt.y * vh;
+
+          x= vw - x; // spejl
+
+          return { x: x * sx, y: y* sy};
+        })
       }));
     } catch {}
     requestAnimationFrame(step);
@@ -438,18 +453,21 @@ function currentFaceBounds(){
 // alle hånd-bounds
 function currentAllHandBounds() {
   const out = [];
-  for (const h of (hands || [])) {
-    const pts = h?.keypoints || h?.landmarks || [];
-    if (!pts || pts.length === 0) continue;
+  for (const h of hands || []) {
+    const pts = h?.keypoints || [];
+    if (!pts.length) continue;
     let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-    for (const kp of pts) {
-      const x = kp.x ?? kp[0], y = kp.y ?? kp[1];
+    for (const {x, y} of pts) {
       if (x < minX) minX = x;
       if (x > maxX) maxX = x;
       if (y < minY) minY = y;
       if (y > maxY) maxY = y;
     }
-    out.push({ x: minX, y: minY, w: maxX - minX, h: maxY - minY, cx: (minX + maxX)/2, cy: (minY + maxY)/2 });
+    out.push({ 
+      x: minX, y: minY, 
+      w: maxX - minX, h: maxY - minY, 
+      cx: (minX + maxX)/2, cy: (minY + maxY)/2 
+    });
   }
   return out;
 }
