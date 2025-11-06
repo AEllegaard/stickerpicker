@@ -2,7 +2,7 @@
 import { onMounted, onBeforeUnmount, ref } from 'vue';
 import './assets/style.css';
 
-// import deco-ressourcer
+// kun hat som eksempel
 import hatSrc from './assets/hat.webp';
 
 const canvasHost = ref(null);
@@ -16,11 +16,12 @@ let P5, ml5, pInstance = null, faceMesh = null, handModel = null;
 let faces = [];
 let hands = [];
 
-// deco-objekter på lærredet
+// deco-objekter på lærredet (påvirkes ikke af håndmasken)
 let decos = [];
 
-// fallback loop stopper
-let stopManualDetect = null;
+// stop-funktioner til fallback loops
+let stopManualFaceDetect = null;
+let stopManualHandDetect = null;
 
 // face konstanter
 const FACE_EXPAND = 1.3;
@@ -36,7 +37,7 @@ let g = {
 
 const VID_W = 330, VID_H = 240;
 
-// palette-ikoner (nede i panelet)
+// palette
 const palette = [
   { key: 'hat', src: hatSrc, x: 55, y: 320, w: 60, h: 60 }
 ];
@@ -57,8 +58,7 @@ async function probeMiro() {
 // simpelt deco-objekt
 class Deco {
   constructor(p, img, x, y, w, h) {
-    this.p = p;
-    this.img = img;
+    this.p = p; this.img = img;
     this.x = x; this.y = y;
     this.w = w; this.h = h;
     this.dragging = false;
@@ -67,25 +67,10 @@ class Deco {
   contains(mx, my) {
     return Math.abs(mx - this.x) <= this.w/2 && Math.abs(my - this.y) <= this.h/2;
   }
-  startDrag(mx, my) {
-    this.dragging = true;
-    this._dx = mx - this.x;
-    this._dy = my - this.y;
-  }
-  drag(mx, my) {
-    if (!this.dragging) return;
-    this.x = mx - this._dx;
-    this.y = my - this._dy;
-  }
+  startDrag(mx, my) { this.dragging = true; this._dx = mx - this.x; this._dy = my - this.y; }
+  drag(mx, my) { if (this.dragging) { this.x = mx - this._dx; this.y = my - this._dy; } }
   stopDrag() { this.dragging = false; }
-  angleToOrigin() {
-    if (this.x > VID_W/2 + 20){
-      return Math.atan2(this.y, this.x); // peger mod (0,0)
-
-    } if (this.x < VID_W/2 - 20){
-      return Math.atan2(-this.y, this.x); // peger mod (0,0) spejlet  
-    }
-  }
+  angleToOrigin() { return Math.atan2(this.y, this.x); } // peg mod (0,0)
   draw() {
     const p = this.p;
     p.push();
@@ -120,10 +105,11 @@ const makeSketch = (p) => {
     g.pg    = p.createGraphics(VID_W, VID_H);
     g.maskG = p.createGraphics(VID_W, VID_H);
 
-    // ml5 init
+    // async init
     (async () => {
       await waitForVideo(g.video.elt);
 
+      // TF backend
       try {
         const tf = ml5?.tf;
         if (tf?.setBackend) {
@@ -132,36 +118,30 @@ const makeSketch = (p) => {
         }
       } catch {}
 
-      faceMesh = await ml5.faceMesh({
-        maxFaces: 1,
-        refineLandmarks: false,
-        flipped: true
-      });
-
-      await waitForModel(faceMesh, 15000);
-
+      // FaceMesh
+      faceMesh = await ml5.faceMesh({ maxFaces: 1, refineLandmarks: false, flipped: true });
+      await waitForFaceModel(faceMesh, 15000);
       try {
         faceMesh.detectStart(g.video.elt, (results) => { faces = results || []; });
         console.log('FaceMesh detectStart kører');
       } catch (e) {
-        console.warn('detectStart fejlede, skifter til manuelt loop', e);
-        startManualDetectLoop();
+        console.warn('Face detectStart fejlede, manuelt loop', e);
+        startManualFaceLoop();
       }
 
+      // Handpose
       try {
-        handModel = await ml5.handpose({flipped: true});
+        handModel = await ml5.handpose({ flipped: true });
         await waitForHandModel(handModel, 15000);
-
         try {
           handModel.detectStart(g.video.elt, (results) => { hands = results || []; });
           console.log('Handpose detectStart kører');
         } catch (e) {
-          console.warn('Handpose detectStart fejlede, skifter til manuelt loop', e);
-          startManualDetectLoop();
+          console.warn('Hand detectStart fejlede, manuelt loop', e);
+          startManualHandLoop();
         }
       } catch (e) {
-        console.warn('Handpose model load fejlede, fortsætter uden hånddetektion', e);
-
+        console.warn('Handpose model ikke tilgængelig – fortsætter uden hænder', e);
       }
     })().catch(console.error);
   };
@@ -169,13 +149,13 @@ const makeSketch = (p) => {
   p.draw = () => {
     p.background(220);
 
-    // ryd buffers
+    // clear buffers
     g.pg.clear();
     g.maskG.clear();
     g.maskG.noStroke();
     g.maskG.fill(255);
 
-    // spejl video ind i pg
+    // spejl video til offscreen
     if (g.video) {
       g.pg.push();
       g.pg.translate(VID_W, 0);
@@ -184,13 +164,14 @@ const makeSketch = (p) => {
       g.pg.pop();
     }
 
-    // dekorationspanel
+    // palette panel
     drawPalette(p);
 
+    // ——— mask: ansigt + hænder ———
     if (faces.length > 0) {
       const face = faces[0];
 
-      // centrum
+      // ansigtscentrum
       let cx = 0, cy = 0;
       for (let i = 0; i < faceOutline.length; i++) {
         const kp = face.keypoints[faceOutline[i]];
@@ -198,7 +179,7 @@ const makeSketch = (p) => {
       }
       cx /= faceOutline.length; cy /= faceOutline.length;
 
-      // maske
+      // ansigtsform
       g.maskG.beginShape();
       for (let i = 0; i < faceOutline.length; i++) {
         const kp = face.keypoints[faceOutline[i]];
@@ -207,18 +188,30 @@ const makeSketch = (p) => {
       }
       g.maskG.endShape(p.CLOSE);
 
+      // HÆNDER: læg ovale masker oveni
+      const handBounds = currentAllHandBounds(); // evt. flere hænder
+      for (const hb of handBounds) {
+        const mw = hb.w * 1.25; // lidt margin
+        const mh = hb.h * 1.25;
+        g.maskG.push();
+        g.maskG.ellipseMode(g.maskG.CENTER);
+        g.maskG.noStroke();
+        g.maskG.fill(255);
+        g.maskG.ellipse(hb.cx, hb.cy, mw, mh);
+        g.maskG.pop();
+      }
+
+      // anvend maske
       const masked = g.pg.get();
       masked.mask(g.maskG.get());
       g.maskedImg = masked;
 
-      // ansigt
+      // vis ansigt+hænder (decos tegnes bagefter og er ikke en del af masken)
       p.image(g.maskedImg, 0, 0, VID_W, VID_H);
 
-      // outline
+      // flot face-outline
       p.push();
-      p.noFill();
-      p.stroke(255);
-      p.strokeWeight(10);
+      p.noFill(); p.stroke(255); p.strokeWeight(10);
       p.beginShape();
       for (let i = 0; i < faceOutline.length; i++) {
         const kp = face.keypoints[faceOutline[i]];
@@ -231,7 +224,7 @@ const makeSketch = (p) => {
       g.maskedImg = null;
     }
 
-    // tegn alle decos ovenpå
+    // DECOR: altid ovenpå, påvirkes ikke af håndmasken
     for (const d of decos) d.draw();
   };
 
@@ -242,13 +235,8 @@ const makeSketch = (p) => {
       const pos = faceCenterOrFallback();
       const img = p.assets[hit.key];
 
-      //find ansigts bredden
       const fb = currentFaceBounds();
-
-      //basis på 70% af ansigts bredden
       let base = fb ? Math.max(fb.w, fb.h) * 1 : 100;
-
-      //hold den inden for grænserne
       base = Math.max(80, Math.min(base, 220));
 
       decos.push(new Deco(p, img, pos.x, pos.y, base, base));
@@ -266,37 +254,22 @@ const makeSketch = (p) => {
     }
   };
 
-  p.mouseDragged = () => { for (const d of decos) d.drag(p.mouseX, p.mouseY); };
-  p.mouseReleased = () => { for (const d of decos) d.stopDrag(); };
-
-  // NYT: dobbeltklik fjerner øverste deco under musen
-  p.doubleClicked = () => {
+  p.mouseDragged   = () => { for (const d of decos) d.drag(p.mouseX, p.mouseY); };
+  p.mouseReleased  = () => { for (const d of decos) d.stopDrag(); };
+  p.doubleClicked  = () => {
     for (let i = decos.length - 1; i >= 0; i--) {
-      if (decos[i].contains(p.mouseX, p.mouseY)) {
-        decos.splice(i, 1);
-        break;
-      }
+      if (decos[i].contains(p.mouseX, p.mouseY)) { decos.splice(i, 1); break; }
     }
-    return false; // forhindre evt. default
+    return false;
   };
 
   function drawPalette(p) {
-    p.noStroke();
-    p.fill(205);
-    p.rect(0, 250, 330, 140);
-
-    p.fill(30);
-    p.textSize(12);
-    p.text('Decor', 10, 265);
-
+    p.noStroke(); p.fill(205); p.rect(0, 250, 330, 140);
+    p.fill(30); p.textSize(12); p.text('Decor', 10, 265);
     for (const item of palette) {
       const img = p.assets[item.key];
       if (!img) continue;
-      p.push();
-      p.imageMode(p.CENTER);
-      p.image(img, item.x, item.y, item.w, item.h);
-      p.pop();
-
+      p.push(); p.imageMode(p.CENTER); p.image(img, item.x, item.y, item.w, item.h); p.pop();
       if (dist2(p.mouseX, p.mouseY, item.x, item.y) < (Math.max(item.w, item.h)/2)**2) {
         p.noFill(); p.stroke(0); p.strokeWeight(1);
         p.rect(item.x - item.w/2 - 4, item.y - item.h/2 - 4, item.w + 8, item.h + 8);
@@ -333,10 +306,7 @@ function waitForVideo(videoEl, timeoutMs = 10000) {
   return new Promise((resolve, reject) => {
     const t0 = performance.now();
     const tick = () => {
-      if (videoEl && videoEl.readyState >= 2) {
-        videoEl.play?.().catch(()=>{});
-        return resolve();
-      }
+      if (videoEl && videoEl.readyState >= 2) { videoEl.play?.().catch(()=>{}); return resolve(); }
       if (performance.now() - t0 > timeoutMs) return reject(new Error('video timeout'));
       requestAnimationFrame(tick);
     };
@@ -344,17 +314,15 @@ function waitForVideo(videoEl, timeoutMs = 10000) {
   });
 }
 
-function waitForModel(fm, timeoutMs = 15000) {
+function waitForFaceModel(fm, timeoutMs = 15000) {
   return new Promise((resolve, reject) => {
     const t0 = performance.now();
     const tick = () => {
-      const ready =
-        !!fm &&
-        (
-          (fm.model && typeof fm.model.estimateFaces === 'function') ||
-          (fm.landmarkDetector && typeof fm.landmarkDetector.estimateFaces === 'function') ||
-          (fm.detector && typeof fm.detector.estimateFaces === 'function')
-        );
+      const ready = !!fm && (
+        (fm.model && typeof fm.model.estimateFaces === 'function') ||
+        (fm.landmarkDetector && typeof fm.landmarkDetector.estimateFaces === 'function') ||
+        (fm.detector && typeof fm.detector.estimateFaces === 'function')
+      );
       if (ready) return resolve();
       if (performance.now() - t0 > timeoutMs) return reject(new Error('FaceMesh model load timeout'));
       requestAnimationFrame(tick);
@@ -363,7 +331,24 @@ function waitForModel(fm, timeoutMs = 15000) {
   });
 }
 
-function startManualDetectLoop() {
+function waitForHandModel(hm, timeoutMs = 15000){
+  return new Promise((resolve, reject) => {
+    const t0 = performance.now();
+    const tick = () => {
+      const ready = !!hm && (
+        (hm.model && typeof hm.model.estimateHands === 'function') ||
+        (hm.detector && typeof hm.detector.estimateHands === 'function')
+      );
+      if (ready) return resolve();
+      if (performance.now() - t0 > timeoutMs) return reject(new Error('Handpose model load timeout'));
+      requestAnimationFrame(tick);
+    };
+    tick();
+  });
+}
+
+// fallback: manuelt face-loop
+function startManualFaceLoop() {
   let alive = true;
   const step = async () => {
     if (!alive) return;
@@ -374,48 +359,10 @@ function startManualDetectLoop() {
     requestAnimationFrame(step);
   };
   step();
-  stopManualDetect = () => { alive = false; };
+  stopManualFaceDetect = () => { alive = false; };
 }
 
-function currentFaceBounds(){
-  if (faces.length === 0) return null;
-  const face = faces[0];
-  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-  for (let i = 0; i < faceOutline.length; i++) {
-    const kp = face.keypoints[faceOutline[i]];
-    if (kp.x < minX) minX = kp.x;
-    if (kp.x > maxX) maxX = kp.x;
-    if (kp.y < minY) minY = kp.y;
-    if (kp.y > maxY) maxY = kp.y;
-  }
-  return { 
-    x: minX,
-    y: minY,
-    w: maxX - minX,
-    h: maxY - minY,
-    cx: (minX + maxX) / 2,
-    cy: (minY + maxY) / 2
-  };
-}
-
-function waitForHandModel(hm, timeoutMs = 15000){
-  return new Promise((resolve, reject) => {
-    const t0 = performance.now();
-    const tick = () => {
-      const ready =
-        !!hm&&
-        (
-          (hm.model && typeof hm.model.estimateHansa === 'function') ||
-          (hm.detector && typeof hm.detector.estimateHands === 'function')
-        );
-      if (ready) return resolve();
-      if (performance.now() - t0 > timeoutMs) return reject(new Error('Handpose model load timeout'));
-      requestAnimationFrame(tick);
-    };
-    tick();
-  });
-}
-
+// fallback: manuelt hand-loop
 function startManualHandLoop() {
   let alive = true;
   const step = async () => {
@@ -427,14 +374,14 @@ function startManualHandLoop() {
     requestAnimationFrame(step);
   };
   step();
-  stopManualDetect = () => { alive = false; };
+  stopManualHandDetect = () => { alive = false; };
 }
 
-async function buildStickerPNG(p) {
+// ansigts-bounds
+function currentFaceBounds(){
+  if (faces.length === 0) return null;
   const face = faces[0];
-
-  // bbox omkring face
-  let minX = p.width, maxX = 0, minY = p.height, maxY = 0;
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
   for (let i = 0; i < faceOutline.length; i++) {
     const kp = face.keypoints[faceOutline[i]];
     if (kp.x < minX) minX = kp.x;
@@ -442,13 +389,39 @@ async function buildStickerPNG(p) {
     if (kp.y < minY) minY = kp.y;
     if (kp.y > maxY) maxY = kp.y;
   }
-  const faceW = maxX - minX;
-  const faceH = maxY - minY;
-  const size = (Math.max(faceW, faceH) * 2) | 0;
-  const centerX = (minX + maxX) / 2;
-  const centerY = (minY + maxY) / 2;
+  return { x: minX, y: minY, w: maxX - minX, h: maxY - minY, cx: (minX + maxX)/2, cy: (minY + maxY)/2 };
+}
 
-  // byg sticker på offscreen square
+// alle hånd-bounds (robust mod forskelige format-varianter)
+function currentAllHandBounds() {
+  const out = [];
+  for (const h of (hands || [])) {
+    // mulige felter: keypoints (ml5), landmarks (mediapipe), annotations mm.
+    const pts = h?.keypoints || h?.landmarks || [];
+    if (!pts || pts.length === 0) continue;
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (const kp of pts) {
+      const x = (kp.x ?? kp[0]); const y = (kp.y ?? kp[1]);
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+    }
+    out.push({ x: minX, y: minY, w: maxX - minX, h: maxY - minY, cx: (minX + maxX)/2, cy: (minY + maxY)/2 });
+  }
+  return out;
+}
+
+async function buildStickerPNG(p) {
+  // g.maskedImg indeholder allerede ansigt + hænder
+  if (!g.maskedImg || faces.length === 0) return null;
+
+  // brug ansigts-bbox til udklip
+  const fb = currentFaceBounds();
+  const faceW = fb.w, faceH = fb.h;
+  const size  = (Math.max(faceW, faceH) * 2) | 0;
+  const centerX = fb.cx, centerY = fb.cy;
+
   const square = p.createGraphics(size, size);
   square.pixelDensity(1);
   square.clear();
@@ -457,21 +430,15 @@ async function buildStickerPNG(p) {
   const offsetY = size / 2 - centerY;
   square.image(g.maskedImg, offsetX, offsetY);
 
-  // outline
-  let cx = 0, cy = 0;
-  for (let i = 0; i < faceOutline.length; i++) {
-    const kp = face.keypoints[faceOutline[i]];
-    cx += kp.x; cy += kp.y;
-  }
-  cx /= faceOutline.length; cy /= faceOutline.length;
-
+  // face-outline ovenpå (valgfri)
+  let cx = fb.cx, cy = fb.cy;
   square.push();
   square.noFill();
   square.stroke(255);
   square.strokeWeight(10);
   square.beginShape();
   for (let i = 0; i < faceOutline.length; i++) {
-    const kp = face.keypoints[faceOutline[i]];
+    const kp = faces[0].keypoints[faceOutline[i]];
     const vx = kp.x - cx, vy = kp.y - cy;
     const ex = cx + vx * FACE_EXPAND;
     const ey = cy + vy * FACE_EXPAND;
@@ -482,7 +449,7 @@ async function buildStickerPNG(p) {
   square.endShape(p.CLOSE);
   square.pop();
 
-  // læg alle decos ovenpå (samme rotation)
+  // læg decos ovenpå (de påvirkes ikke af maske)
   for (const d of decos) {
     const angle = Math.atan2(d.y, d.x);
     const dx = d.x - centerX + size/2;
@@ -496,8 +463,7 @@ async function buildStickerPNG(p) {
     square.pop();
   }
 
-  const dataUrl = square.canvas.toDataURL('image/png');
-  return dataUrl;
+  return square.canvas.toDataURL('image/png');
 }
 
 async function pasteSticker() {
@@ -505,17 +471,15 @@ async function pasteSticker() {
     console.log('Ingen face detekteret');
     return;
   }
-
   const p = pInstance;
   const dataUrl = await buildStickerPNG(p);
+  if (!dataUrl) return;
 
   try {
     await window.miro?.board?.getInfo();
-
     const viewport = await window.miro.board.viewport.get();
     const { x, y, width, height } = viewport;
-    const cx = x + width / 2;
-    const cy = y + height / 2;
+    const cx = x + width / 2, cy = y + height / 2;
 
     const created = await window.miro.board.createImage({
       url: dataUrl,
@@ -527,9 +491,7 @@ async function pasteSticker() {
   } catch (e) {
     console.warn('Ikke i Miro eller createImage fejlede. Gemmer lokalt.', e);
     const a = document.createElement('a');
-    a.href = dataUrl;
-    a.download = 'sticker.png';
-    a.click();
+    a.href = dataUrl; a.download = 'sticker.png'; a.click();
   }
 }
 
@@ -552,7 +514,9 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   try { faceMesh?.detectStop?.(); } catch {}
-  try { stopManualDetect?.(); } catch {}
+  try { handModel?.detectStop?.(); } catch {}
+  try { stopManualFaceDetect?.(); } catch {}
+  try { stopManualHandDetect?.(); } catch {}
   try { pInstance?.remove?.(); } catch {}
 });
 </script>
@@ -560,12 +524,6 @@ onBeforeUnmount(() => {
 <template>
   <div id="root">
     <div class="grid wrapper">
-      <!--
-      <div class="cs1 ce12">
-        <h1>Sticker Picker</h1>
-      </div>
-      -->
-
       <div class="canvas cs1 ce12">
         <div ref="canvasHost" style="min-height: 400px;"></div>
       </div>
