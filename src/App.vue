@@ -16,6 +16,10 @@ let P5, ml5, pInstance = null, faceMesh = null, handModel = null;
 let faces = [];
 let hands = [];
 
+// MediaPipe fallback til hænder
+let handLandmarker = null;
+let handLoopStop = null;
+
 // deco-objekter på lærredet
 let decos = [];
 
@@ -70,7 +74,7 @@ class Deco {
   startDrag(mx, my) { this.dragging = true; this._dx = mx - this.x; this._dy = my - this.y; }
   drag(mx, my) { if (this.dragging) { this.x = mx - this._dx; this.y = my - this._dy; } }
   stopDrag() { this.dragging = false; }
-  angleToOrigin() { return Math.atan2(this.y, this.x); } // peg mod (0,0)
+  angleToOrigin() { return Math.atan2(this.y, this.x); }
   draw() {
     const p = this.p;
     if (!this.img) return;
@@ -91,7 +95,7 @@ const makeSketch = (p) => {
     p.angleMode(p.RADIANS);
     p.createCanvas(330, 390);
 
-    // load hat billede i setup (p5 v2 har ikke preload)
+    // load hat
     p.loadImage(hatSrc, img => { p.assets.hat = img; });
 
     // kamera
@@ -129,20 +133,25 @@ const makeSketch = (p) => {
         startManualFaceLoop();
       }
 
-      // Handpose via ml5
+      // Hænder: prøv ml5.handpose, ellers fallback til MediaPipe
       try {
-        if (!ml5.handpose) throw new Error('Denne ml5 build eksporterer ikke handpose');
-        handModel = await ml5.handpose({ flipped: true });
-        await waitForHandModel(handModel, 15000);
-        try {
-          handModel.detectStart(g.video.elt, (results) => { hands = results || []; });
-          console.log('Handpose detectStart kører');
-        } catch (e) {
-          console.warn('Hand detectStart fejlede, manuelt loop', e);
-          startManualHandLoop();
+        if (ml5.handpose) {
+          handModel = await ml5.handpose({ flipped: true });
+          await waitForHandModel(handModel, 15000);
+          try {
+            handModel.detectStart(g.video.elt, (results) => { hands = results || []; });
+            console.log('Handpose detectStart kører (ml5)');
+          } catch (e) {
+            console.warn('ml5 hand detectStart fejlede, manuelt loop', e);
+            startManualHandLoop();
+          }
+        } else {
+          console.warn('ml5.handpose mangler — starter MediaPipe fallback');
+          await initHandsFallback(g.video.elt, VID_W, VID_H);
+          console.log('HandLandmarker detect kører (MediaPipe)');
         }
       } catch (e) {
-        console.warn('ml5.handpose ikke tilgængelig. Kører videre uden hænder.', e);
+        console.warn('Kunne ikke starte hånddetektion. Fortsætter uden hænder.', e);
       }
     })().catch(console.error);
   };
@@ -380,6 +389,37 @@ function startManualHandLoop() {
   stopManualHandDetect = () => { alive = false; };
 }
 
+// MediaPipe fallback init og loop
+async function initHandsFallback(videoEl, vidW, vidH) {
+  const { FilesetResolver, HandLandmarker } = await import('@mediapipe/tasks-vision');
+
+  const vision = await FilesetResolver.forVisionTasks(
+    'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm'
+  );
+
+  handLandmarker = await HandLandmarker.createFromOptions(vision, {
+    baseOptions: {
+      modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task'
+    },
+    numHands: 2,
+    runningMode: 'VIDEO'
+  });
+
+  let alive = true;
+  const step = () => {
+    if (!alive || !handLandmarker || !videoEl) return;
+    try {
+      const res = handLandmarker.detectForVideo(videoEl, performance.now());
+      hands = (res?.landmarks || []).map(pts => ({
+        keypoints: pts.map(pt => ({ x: pt.x * vidW, y: pt.y * vidH }))
+      }));
+    } catch {}
+    requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+  handLoopStop = () => { alive = false; };
+}
+
 // ansigts-bounds
 function currentFaceBounds(){
   if (faces.length === 0) return null;
@@ -515,6 +555,8 @@ onBeforeUnmount(() => {
   try { handModel?.detectStop?.(); } catch {}
   try { stopManualFaceDetect?.(); } catch {}
   try { stopManualHandDetect?.(); } catch {}
+  try { handLoopStop?.(); } catch {}
+  try { handLandmarker?.close?.(); } catch {}
   try { pInstance?.remove?.(); } catch {}
 });
 </script>
