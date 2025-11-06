@@ -66,6 +66,7 @@ class Deco {
   contains(mx, my) {
     return Math.abs(mx - this.x) <= this.w/2 && Math.abs(my - this.y) <= this.h/2;
   }
+  //drag handling
   startDrag(mx, my) {
     this.dragging = true;
     this._dx = mx - this.x;
@@ -77,6 +78,7 @@ class Deco {
     this.y = my - this._dy;
   }
   stopDrag() { this.dragging = false; }
+//peger decor mod centrum, og flipper på midten
   angleToOrigin() {
     if (this.x > VID_W/2 + 20){
       return Math.atan2(this.y, this.x); // peger mod (0,0)
@@ -86,6 +88,7 @@ class Deco {
     }
   }
   draw() {
+    //tegner decor på ansigtet. 
     const p = this.p;
     p.push();
     p.translate(this.x, this.y);
@@ -108,7 +111,7 @@ const makeSketch = (p) => {
     p.angleMode(p.RADIANS);
     p.createCanvas(330, 390);
 
-    // kamera
+    // opretter kamera og skjuler det 
     g.video = p.createCapture({ video: { facingMode: 'user', width: VID_W, height: VID_H }, audio: false });
     g.video.size(VID_W, VID_H);
     g.video.hide();
@@ -119,7 +122,7 @@ const makeSketch = (p) => {
     g.pg    = p.createGraphics(VID_W, VID_H);
     g.maskG = p.createGraphics(VID_W, VID_H);
 
-    // ml5 init
+    // ml5 initialisering
     (async () => {
       await waitForVideo(g.video.elt);
 
@@ -252,7 +255,7 @@ const makeSketch = (p) => {
   p.mouseDragged = () => { for (const d of decos) d.drag(p.mouseX, p.mouseY); };
   p.mouseReleased = () => { for (const d of decos) d.stopDrag(); };
 
-  // NYT: dobbeltklik fjerner øverste deco under musen
+  //dobbeltklik fjerner øverste deco under musen
   p.doubleClicked = () => {
     for (let i = decos.length - 1; i >= 0; i--) {
       if (decos[i].contains(p.mouseX, p.mouseY)) {
