@@ -2,7 +2,7 @@
 import { onMounted, onBeforeUnmount, ref } from 'vue';
 import './assets/style.css';
 
-// kun hat som eksempel
+// importér dine deco assets via Vite
 import hatSrc from './assets/hat.webp';
 
 const canvasHost = ref(null);
@@ -16,7 +16,7 @@ let P5, ml5, pInstance = null, faceMesh = null, handModel = null;
 let faces = [];
 let hands = [];
 
-// deco-objekter på lærredet (påvirkes ikke af håndmasken)
+// deco-objekter på lærredet
 let decos = [];
 
 // stop-funktioner til fallback loops
@@ -73,6 +73,7 @@ class Deco {
   angleToOrigin() { return Math.atan2(this.y, this.x); } // peg mod (0,0)
   draw() {
     const p = this.p;
+    if (!this.img) return;
     p.push();
     p.translate(this.x, this.y);
     p.rotate(this.angleToOrigin());
@@ -83,16 +84,15 @@ class Deco {
 }
 
 const makeSketch = (p) => {
-  p.assets = {};
-
-  p.preload = () => {
-    p.assets.hat = p.loadImage(hatSrc);
-  };
+  p.assets = { hat: null };
 
   p.setup = () => {
     p.pixelDensity(1);
     p.angleMode(p.RADIANS);
     p.createCanvas(330, 390);
+
+    // load hat billede i setup (p5 v2 har ikke preload)
+    p.loadImage(hatSrc, img => { p.assets.hat = img; });
 
     // kamera
     g.video = p.createCapture({ video: { facingMode: 'user', width: VID_W, height: VID_H }, audio: false });
@@ -129,8 +129,9 @@ const makeSketch = (p) => {
         startManualFaceLoop();
       }
 
-      // Handpose
+      // Handpose via ml5
       try {
+        if (!ml5.handpose) throw new Error('Denne ml5 build eksporterer ikke handpose');
         handModel = await ml5.handpose({ flipped: true });
         await waitForHandModel(handModel, 15000);
         try {
@@ -141,7 +142,7 @@ const makeSketch = (p) => {
           startManualHandLoop();
         }
       } catch (e) {
-        console.warn('Handpose model ikke tilgængelig – fortsætter uden hænder', e);
+        console.warn('ml5.handpose ikke tilgængelig. Kører videre uden hænder.', e);
       }
     })().catch(console.error);
   };
@@ -167,7 +168,7 @@ const makeSketch = (p) => {
     // palette panel
     drawPalette(p);
 
-    // ——— mask: ansigt + hænder ———
+    // mask: ansigt + hænder
     if (faces.length > 0) {
       const face = faces[0];
 
@@ -188,10 +189,10 @@ const makeSketch = (p) => {
       }
       g.maskG.endShape(p.CLOSE);
 
-      // HÆNDER: læg ovale masker oveni
-      const handBounds = currentAllHandBounds(); // evt. flere hænder
+      // hænder som elipser oveni masken
+      const handBounds = currentAllHandBounds();
       for (const hb of handBounds) {
-        const mw = hb.w * 1.25; // lidt margin
+        const mw = hb.w * 1.25;
         const mh = hb.h * 1.25;
         g.maskG.push();
         g.maskG.ellipseMode(g.maskG.CENTER);
@@ -201,15 +202,15 @@ const makeSketch = (p) => {
         g.maskG.pop();
       }
 
-      // anvend maske
+      // anvend masken
       const masked = g.pg.get();
       masked.mask(g.maskG.get());
       g.maskedImg = masked;
 
-      // vis ansigt+hænder (decos tegnes bagefter og er ikke en del af masken)
+      // vis ansigt + hænder
       p.image(g.maskedImg, 0, 0, VID_W, VID_H);
 
-      // flot face-outline
+      // face-outline som pynt
       p.push();
       p.noFill(); p.stroke(255); p.strokeWeight(10);
       p.beginShape();
@@ -224,7 +225,7 @@ const makeSketch = (p) => {
       g.maskedImg = null;
     }
 
-    // DECOR: altid ovenpå, påvirkes ikke af håndmasken
+    // decor: tegnes ovenpå og påvirkes ikke af masken
     for (const d of decos) d.draw();
   };
 
@@ -237,7 +238,7 @@ const makeSketch = (p) => {
 
       const fb = currentFaceBounds();
       let base = fb ? Math.max(fb.w, fb.h) * 1 : 100;
-      base = Math.max(80, Math.min(base, 220));
+      base = Math.max(80, Math.min(base, 240));
 
       decos.push(new Deco(p, img, pos.x, pos.y, base, base));
       return;
@@ -254,9 +255,11 @@ const makeSketch = (p) => {
     }
   };
 
-  p.mouseDragged   = () => { for (const d of decos) d.drag(p.mouseX, p.mouseY); };
-  p.mouseReleased  = () => { for (const d of decos) d.stopDrag(); };
-  p.doubleClicked  = () => {
+  p.mouseDragged = () => { for (const d of decos) d.drag(p.mouseX, p.mouseY); };
+  p.mouseReleased = () => { for (const d of decos) d.stopDrag(); };
+
+  // dobbeltklik: fjern øverste deco under musen
+  p.doubleClicked = () => {
     for (let i = decos.length - 1; i >= 0; i--) {
       if (decos[i].contains(p.mouseX, p.mouseY)) { decos.splice(i, 1); break; }
     }
@@ -347,7 +350,7 @@ function waitForHandModel(hm, timeoutMs = 15000){
   });
 }
 
-// fallback: manuelt face-loop
+// manuelt face-loop
 function startManualFaceLoop() {
   let alive = true;
   const step = async () => {
@@ -358,11 +361,11 @@ function startManualFaceLoop() {
     } catch {}
     requestAnimationFrame(step);
   };
-  step();
+  requestAnimationFrame(step);
   stopManualFaceDetect = () => { alive = false; };
 }
 
-// fallback: manuelt hand-loop
+// manuelt hand-loop
 function startManualHandLoop() {
   let alive = true;
   const step = async () => {
@@ -373,7 +376,7 @@ function startManualHandLoop() {
     } catch {}
     requestAnimationFrame(step);
   };
-  step();
+  requestAnimationFrame(step);
   stopManualHandDetect = () => { alive = false; };
 }
 
@@ -392,16 +395,15 @@ function currentFaceBounds(){
   return { x: minX, y: minY, w: maxX - minX, h: maxY - minY, cx: (minX + maxX)/2, cy: (minY + maxY)/2 };
 }
 
-// alle hånd-bounds (robust mod forskelige format-varianter)
+// alle hånd-bounds
 function currentAllHandBounds() {
   const out = [];
   for (const h of (hands || [])) {
-    // mulige felter: keypoints (ml5), landmarks (mediapipe), annotations mm.
     const pts = h?.keypoints || h?.landmarks || [];
     if (!pts || pts.length === 0) continue;
     let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
     for (const kp of pts) {
-      const x = (kp.x ?? kp[0]); const y = (kp.y ?? kp[1]);
+      const x = kp.x ?? kp[0], y = kp.y ?? kp[1];
       if (x < minX) minX = x;
       if (x > maxX) maxX = x;
       if (y < minY) minY = y;
@@ -413,13 +415,10 @@ function currentAllHandBounds() {
 }
 
 async function buildStickerPNG(p) {
-  // g.maskedImg indeholder allerede ansigt + hænder
   if (!g.maskedImg || faces.length === 0) return null;
 
-  // brug ansigts-bbox til udklip
   const fb = currentFaceBounds();
-  const faceW = fb.w, faceH = fb.h;
-  const size  = (Math.max(faceW, faceH) * 2) | 0;
+  const size  = (Math.max(fb.w, fb.h) * 2) | 0;
   const centerX = fb.cx, centerY = fb.cy;
 
   const square = p.createGraphics(size, size);
@@ -430,8 +429,7 @@ async function buildStickerPNG(p) {
   const offsetY = size / 2 - centerY;
   square.image(g.maskedImg, offsetX, offsetY);
 
-  // face-outline ovenpå (valgfri)
-  let cx = fb.cx, cy = fb.cy;
+  // face-outline ovenpå
   square.push();
   square.noFill();
   square.stroke(255);
@@ -439,17 +437,17 @@ async function buildStickerPNG(p) {
   square.beginShape();
   for (let i = 0; i < faceOutline.length; i++) {
     const kp = faces[0].keypoints[faceOutline[i]];
-    const vx = kp.x - cx, vy = kp.y - cy;
-    const ex = cx + vx * FACE_EXPAND;
-    const ey = cy + vy * FACE_EXPAND;
+    const vx = kp.x - fb.cx, vy = kp.y - fb.cy;
+    const ex = fb.cx + vx * FACE_EXPAND;
+    const ey = fb.cy + vy * FACE_EXPAND;
     const px = ex - centerX + size / 2;
     const py = ey - centerY + size / 2;
     square.vertex(px, py);
   }
-  square.endShape(p.CLOSE);
+  square.endShape(square.CLOSE);
   square.pop();
 
-  // læg decos ovenpå (de påvirkes ikke af maske)
+  // læg decos ovenpå
   for (const d of decos) {
     const angle = Math.atan2(d.y, d.x);
     const dx = d.x - centerX + size/2;
