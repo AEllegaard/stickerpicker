@@ -2,7 +2,7 @@
 import { onMounted, onBeforeUnmount, ref } from 'vue';
 import './assets/style.css';
 
-// importér dine deco assets via Vite
+// deco assets via Vite
 import hatSrc from './assets/hat.webp';
 
 const canvasHost = ref(null);
@@ -20,7 +20,7 @@ let hands = [];
 let handLandmarker = null;
 let handLoopStop = null;
 
-// deco-objekter på lærredet
+// deco-objekter
 let decos = [];
 
 // stop-funktioner til fallback loops
@@ -165,7 +165,7 @@ const makeSketch = (p) => {
     g.maskG.noStroke();
     g.maskG.fill(255);
 
-    // spejl video til offscreen
+    // spejl video til offscreen, så alt matcher flip
     if (g.video) {
       g.pg.push();
       g.pg.translate(VID_W, 0);
@@ -234,7 +234,7 @@ const makeSketch = (p) => {
       g.maskedImg = null;
     }
 
-    // decor: tegnes ovenpå og påvirkes ikke af masken
+    // decor: ovenpå
     for (const d of decos) d.draw();
   };
 
@@ -374,7 +374,7 @@ function startManualFaceLoop() {
   stopManualFaceDetect = () => { alive = false; };
 }
 
-// manuelt hand-loop
+// manuelt hand-loop (ml5)
 function startManualHandLoop() {
   let alive = true;
   const step = async () => {
@@ -389,7 +389,7 @@ function startManualHandLoop() {
   stopManualHandDetect = () => { alive = false; };
 }
 
-// MediaPipe fallback init og loop
+// MediaPipe fallback init og loop — mapper til canvas-koordinater og spejler x
 async function initHandsFallback(videoEl, canvasW = VID_W, canvasH = VID_H) {
   const { FilesetResolver, HandLandmarker } = await import('@mediapipe/tasks-vision');
 
@@ -418,16 +418,17 @@ async function initHandsFallback(videoEl, canvasW = VID_W, canvasH = VID_H) {
 
       const result = handLandmarker.detectForVideo(videoEl, performance.now());
 
-      hands = (result?.landmarks || []).map(pts => ({
+      // map til canvas og spejl x for at matche g.pg spejling
+      const mapped = (result?.landmarks || []).map(pts => ({
         keypoints: pts.map(pt => {
           let x = pt.x * vw;
           let y = pt.y * vh;
-
-          x= vw - x; // spejl
-
-          return { x: x * sx, y: y* sy};
+          x = vw - x;              // spejl
+          return { x: x * sx, y: y * sy };
         })
       }));
+
+      hands = mapped;
     } catch {}
     requestAnimationFrame(step);
   };
@@ -450,7 +451,7 @@ function currentFaceBounds(){
   return { x: minX, y: minY, w: maxX - minX, h: maxY - minY, cx: (minX + maxX)/2, cy: (minY + maxY)/2 };
 }
 
-// alle hånd-bounds
+// alle hånd-bounds (punkter er allerede i canvas-koordinater)
 function currentAllHandBounds() {
   const out = [];
   for (const h of hands || []) {
