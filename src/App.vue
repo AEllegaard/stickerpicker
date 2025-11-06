@@ -2,7 +2,7 @@
 import { onMounted, onBeforeUnmount, ref } from 'vue';
 import './assets/style.css';
 
-// importér dine deco assets via Vite
+// import deco-ressourcer
 import hatSrc from './assets/hat.webp';
 
 const canvasHost = ref(null);
@@ -12,20 +12,14 @@ const inMiroRef = ref(false);
 const buttonLabel = ref('Save sticker locally');
 
 // handles
-let P5, ml5, pInstance = null, faceMesh = null, handModel = null;
+let P5, ml5, pInstance = null, faceMesh = null;
 let faces = [];
-let hands = [];
-
-// MediaPipe fallback til hænder
-let handLandmarker = null;
-let handLoopStop = null;
 
 // deco-objekter på lærredet
 let decos = [];
 
-// stop-funktioner til fallback loops
-let stopManualFaceDetect = null;
-let stopManualHandDetect = null;
+// fallback loop stopper
+let stopManualDetect = null;
 
 // face konstanter
 const FACE_EXPAND = 1.3;
@@ -41,7 +35,7 @@ let g = {
 
 const VID_W = 330, VID_H = 240;
 
-// palette
+// palette-ikoner (nede i panelet)
 const palette = [
   { key: 'hat', src: hatSrc, x: 55, y: 320, w: 60, h: 60 }
 ];
@@ -62,7 +56,8 @@ async function probeMiro() {
 // simpelt deco-objekt
 class Deco {
   constructor(p, img, x, y, w, h) {
-    this.p = p; this.img = img;
+    this.p = p;
+    this.img = img;
     this.x = x; this.y = y;
     this.w = w; this.h = h;
     this.dragging = false;
@@ -71,13 +66,27 @@ class Deco {
   contains(mx, my) {
     return Math.abs(mx - this.x) <= this.w/2 && Math.abs(my - this.y) <= this.h/2;
   }
-  startDrag(mx, my) { this.dragging = true; this._dx = mx - this.x; this._dy = my - this.y; }
-  drag(mx, my) { if (this.dragging) { this.x = mx - this._dx; this.y = my - this._dy; } }
+  startDrag(mx, my) {
+    this.dragging = true;
+    this._dx = mx - this.x;
+    this._dy = my - this.y;
+  }
+  drag(mx, my) {
+    if (!this.dragging) return;
+    this.x = mx - this._dx;
+    this.y = my - this._dy;
+  }
   stopDrag() { this.dragging = false; }
-  angleToOrigin() { return Math.atan2(this.y, this.x); }
+  angleToOrigin() {
+    if (this.x > VID_W/2 + 20){
+      return Math.atan2(this.y, this.x); // peger mod (0,0)
+
+    } if (this.x < VID_W/2 - 20){
+      return Math.atan2(-this.y, this.x); // peger mod (0,0) spejlet  
+    }
+  }
   draw() {
     const p = this.p;
-    if (!this.img) return;
     p.push();
     p.translate(this.x, this.y);
     p.rotate(this.angleToOrigin());
@@ -88,15 +97,16 @@ class Deco {
 }
 
 const makeSketch = (p) => {
-  p.assets = { hat: null };
+  p.assets = {};
+
+  p.preload = () => {
+    p.assets.hat = p.loadImage(hatSrc);
+  };
 
   p.setup = () => {
     p.pixelDensity(1);
     p.angleMode(p.RADIANS);
     p.createCanvas(330, 390);
-
-    // load hat
-    p.loadImage(hatSrc, img => { p.assets.hat = img; });
 
     // kamera
     g.video = p.createCapture({ video: { facingMode: 'user', width: VID_W, height: VID_H }, audio: false });
@@ -109,11 +119,10 @@ const makeSketch = (p) => {
     g.pg    = p.createGraphics(VID_W, VID_H);
     g.maskG = p.createGraphics(VID_W, VID_H);
 
-    // async init
+    // ml5 init
     (async () => {
       await waitForVideo(g.video.elt);
 
-      // TF backend
       try {
         const tf = ml5?.tf;
         if (tf?.setBackend) {
@@ -122,36 +131,20 @@ const makeSketch = (p) => {
         }
       } catch {}
 
-      // FaceMesh
-      faceMesh = await ml5.faceMesh({ maxFaces: 1, refineLandmarks: false, flipped: true });
-      await waitForFaceModel(faceMesh, 15000);
+      faceMesh = await ml5.faceMesh({
+        maxFaces: 1,
+        refineLandmarks: false,
+        flipped: true
+      });
+
+      await waitForModel(faceMesh, 15000);
+
       try {
         faceMesh.detectStart(g.video.elt, (results) => { faces = results || []; });
         console.log('FaceMesh detectStart kører');
       } catch (e) {
-        console.warn('Face detectStart fejlede, manuelt loop', e);
-        startManualFaceLoop();
-      }
-
-      // Hænder: prøv ml5.handpose, ellers fallback til MediaPipe
-      try {
-        if (ml5.handpose) {
-          handModel = await ml5.handpose({ flipped: true });
-          await waitForHandModel(handModel, 15000);
-          try {
-            handModel.detectStart(g.video.elt, (results) => { hands = results || []; });
-            console.log('Handpose detectStart kører (ml5)');
-          } catch (e) {
-            console.warn('ml5 hand detectStart fejlede, manuelt loop', e);
-            startManualHandLoop();
-          }
-        } else {
-          console.warn('ml5.handpose mangler — starter MediaPipe fallback');
-          await initHandsFallback(g.video.elt, VID_W, VID_H);
-          console.log('HandLandmarker detect kører (MediaPipe)');
-        }
-      } catch (e) {
-        console.warn('Kunne ikke starte hånddetektion. Fortsætter uden hænder.', e);
+        console.warn('detectStart fejlede, skifter til manuelt loop', e);
+        startManualDetectLoop();
       }
     })().catch(console.error);
   };
@@ -159,13 +152,13 @@ const makeSketch = (p) => {
   p.draw = () => {
     p.background(220);
 
-    // clear buffers
+    // ryd buffers
     g.pg.clear();
     g.maskG.clear();
     g.maskG.noStroke();
     g.maskG.fill(255);
 
-    // spejl video til offscreen, så alt matcher flip
+    // spejl video ind i pg
     if (g.video) {
       g.pg.push();
       g.pg.translate(VID_W, 0);
@@ -174,14 +167,13 @@ const makeSketch = (p) => {
       g.pg.pop();
     }
 
-    // palette panel
+    // dekorationspanel
     drawPalette(p);
 
-    // mask: ansigt + hænder
     if (faces.length > 0) {
       const face = faces[0];
 
-      // ansigtscentrum
+      // centrum
       let cx = 0, cy = 0;
       for (let i = 0; i < faceOutline.length; i++) {
         const kp = face.keypoints[faceOutline[i]];
@@ -189,7 +181,7 @@ const makeSketch = (p) => {
       }
       cx /= faceOutline.length; cy /= faceOutline.length;
 
-      // ansigtsform
+      // maske
       g.maskG.beginShape();
       for (let i = 0; i < faceOutline.length; i++) {
         const kp = face.keypoints[faceOutline[i]];
@@ -198,30 +190,18 @@ const makeSketch = (p) => {
       }
       g.maskG.endShape(p.CLOSE);
 
-      // hænder som elipser oveni masken
-      const handBounds = currentAllHandBounds();
-      for (const hb of handBounds) {
-        const mw = hb.w * 1.25;
-        const mh = hb.h * 1.25;
-        g.maskG.push();
-        g.maskG.ellipseMode(g.maskG.CENTER);
-        g.maskG.noStroke();
-        g.maskG.fill(255);
-        g.maskG.ellipse(hb.cx, hb.cy, mw, mh);
-        g.maskG.pop();
-      }
-
-      // anvend masken
       const masked = g.pg.get();
       masked.mask(g.maskG.get());
       g.maskedImg = masked;
 
-      // vis ansigt + hænder
+      // ansigt
       p.image(g.maskedImg, 0, 0, VID_W, VID_H);
 
-      // face-outline som pynt
+      // outline
       p.push();
-      p.noFill(); p.stroke(255); p.strokeWeight(10);
+      p.noFill();
+      p.stroke(255);
+      p.strokeWeight(10);
       p.beginShape();
       for (let i = 0; i < faceOutline.length; i++) {
         const kp = face.keypoints[faceOutline[i]];
@@ -234,19 +214,8 @@ const makeSketch = (p) => {
       g.maskedImg = null;
     }
 
-    // decor: ovenpå
+    // tegn alle decos ovenpå
     for (const d of decos) d.draw();
-
-    // DEBUG: vis håndlandmarks som små prikker
-    p.push();
-    p.noStroke();
-    p.fill(0, 200, 100);
-    for (const h of hands) {
-      for (const k of (h.keypoints || [])) {
-        p.circle(k.x, k.y, 4);
-      }
-    }
-    p.pop();
   };
 
   // klik i paletten: opret nyt deco
@@ -256,9 +225,14 @@ const makeSketch = (p) => {
       const pos = faceCenterOrFallback();
       const img = p.assets[hit.key];
 
+      //find ansigts bredden
       const fb = currentFaceBounds();
+
+      //basis på 70% af ansigts bredden
       let base = fb ? Math.max(fb.w, fb.h) * 1 : 100;
-      base = Math.max(80, Math.min(base, 240));
+
+      //hold den inden for grænserne
+      base = Math.max(80, Math.min(base, 220));
 
       decos.push(new Deco(p, img, pos.x, pos.y, base, base));
       return;
@@ -278,21 +252,34 @@ const makeSketch = (p) => {
   p.mouseDragged = () => { for (const d of decos) d.drag(p.mouseX, p.mouseY); };
   p.mouseReleased = () => { for (const d of decos) d.stopDrag(); };
 
-  // dobbeltklik: fjern øverste deco under musen
+  // NYT: dobbeltklik fjerner øverste deco under musen
   p.doubleClicked = () => {
     for (let i = decos.length - 1; i >= 0; i--) {
-      if (decos[i].contains(p.mouseX, p.mouseY)) { decos.splice(i, 1); break; }
+      if (decos[i].contains(p.mouseX, p.mouseY)) {
+        decos.splice(i, 1);
+        break;
+      }
     }
-    return false;
+    return false; // forhindre evt. default
   };
 
   function drawPalette(p) {
-    p.noStroke(); p.fill(205); p.rect(0, 250, 330, 140);
-    p.fill(30); p.textSize(12); p.text('Decor', 10, 265);
+    p.noStroke();
+    p.fill(205);
+    p.rect(0, 250, 330, 140);
+
+    p.fill(30);
+    p.textSize(12);
+    p.text('Decor', 10, 265);
+
     for (const item of palette) {
       const img = p.assets[item.key];
       if (!img) continue;
-      p.push(); p.imageMode(p.CENTER); p.image(img, item.x, item.y, item.w, item.h); p.pop();
+      p.push();
+      p.imageMode(p.CENTER);
+      p.image(img, item.x, item.y, item.w, item.h);
+      p.pop();
+
       if (dist2(p.mouseX, p.mouseY, item.x, item.y) < (Math.max(item.w, item.h)/2)**2) {
         p.noFill(); p.stroke(0); p.strokeWeight(1);
         p.rect(item.x - item.w/2 - 4, item.y - item.h/2 - 4, item.w + 8, item.h + 8);
@@ -329,7 +316,10 @@ function waitForVideo(videoEl, timeoutMs = 10000) {
   return new Promise((resolve, reject) => {
     const t0 = performance.now();
     const tick = () => {
-      if (videoEl && videoEl.readyState >= 2) { videoEl.play?.().catch(()=>{}); return resolve(); }
+      if (videoEl && videoEl.readyState >= 2) {
+        videoEl.play?.().catch(()=>{});
+        return resolve();
+      }
       if (performance.now() - t0 > timeoutMs) return reject(new Error('video timeout'));
       requestAnimationFrame(tick);
     };
@@ -337,15 +327,17 @@ function waitForVideo(videoEl, timeoutMs = 10000) {
   });
 }
 
-function waitForFaceModel(fm, timeoutMs = 15000) {
+function waitForModel(fm, timeoutMs = 15000) {
   return new Promise((resolve, reject) => {
     const t0 = performance.now();
     const tick = () => {
-      const ready = !!fm && (
-        (fm.model && typeof fm.model.estimateFaces === 'function') ||
-        (fm.landmarkDetector && typeof fm.landmarkDetector.estimateFaces === 'function') ||
-        (fm.detector && typeof fm.detector.estimateFaces === 'function')
-      );
+      const ready =
+        !!fm &&
+        (
+          (fm.model && typeof fm.model.estimateFaces === 'function') ||
+          (fm.landmarkDetector && typeof fm.landmarkDetector.estimateFaces === 'function') ||
+          (fm.detector && typeof fm.detector.estimateFaces === 'function')
+        );
       if (ready) return resolve();
       if (performance.now() - t0 > timeoutMs) return reject(new Error('FaceMesh model load timeout'));
       requestAnimationFrame(tick);
@@ -354,24 +346,7 @@ function waitForFaceModel(fm, timeoutMs = 15000) {
   });
 }
 
-function waitForHandModel(hm, timeoutMs = 15000){
-  return new Promise((resolve, reject) => {
-    const t0 = performance.now();
-    const tick = () => {
-      const ready = !!hm && (
-        (hm.model && typeof hm.model.estimateHands === 'function') ||
-        (hm.detector && typeof hm.detector.estimateHands === 'function')
-      );
-      if (ready) return resolve();
-      if (performance.now() - t0 > timeoutMs) return reject(new Error('Handpose model load timeout'));
-      requestAnimationFrame(tick);
-    };
-    tick();
-  });
-}
-
-// manuelt face-loop
-function startManualFaceLoop() {
+function startManualDetectLoop() {
   let alive = true;
   const step = async () => {
     if (!alive) return;
@@ -381,86 +356,14 @@ function startManualFaceLoop() {
     } catch {}
     requestAnimationFrame(step);
   };
-  requestAnimationFrame(step);
-  stopManualFaceDetect = () => { alive = false; };
+  step();
+  stopManualDetect = () => { alive = false; };
 }
 
-// manuelt hand-loop (ml5)
-function startManualHandLoop() {
-  let alive = true;
-  const step = async () => {
-    if (!alive) return;
-    try {
-      const res = await handModel.detect(g.video.elt);
-      hands = Array.isArray(res) ? res : (res?.hands || res?.[0]?.hands || []);
-    } catch {}
-    requestAnimationFrame(step);
-  };
-  requestAnimationFrame(step);
-  stopManualHandDetect = () => { alive = false; };
-}
-
-// MediaPipe fallback init og loop — mapper til canvas-koordinater, sænker thresholds, spejler X
-async function initHandsFallback(videoEl, canvasW = VID_W, canvasH = VID_H) {
-  const { FilesetResolver, HandLandmarker } = await import('@mediapipe/tasks-vision');
-
-  const vision = await FilesetResolver.forVisionTasks(
-    'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm'
-  );
-
-  handLandmarker = await HandLandmarker.createFromOptions(vision, {
-    baseOptions: {
-      modelAssetPath:
-        'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task'
-    },
-    numHands: 2,
-    runningMode: 'VIDEO',
-    minHandDetectionConfidence: 0.3,
-    minHandPresenceConfidence: 0.3,
-    minTrackingConfidence: 0.3,
-  });
-
-  await waitForVideo(videoEl);
-
-  let alive = true;
-  const step = () => {
-    if (!alive || !handLandmarker || !videoEl) return;
-
-    try {
-      const vw = videoEl.videoWidth  || canvasW;
-      const vh = videoEl.videoHeight || canvasH;
-      const sx = canvasW / vw;
-      const sy = canvasH / vh;
-
-      const res = handLandmarker.detectForVideo(videoEl, performance.now());
-      const lm  = res?.landmarks || [];
-
-      // map til canvas og spejl X for at matche g.pg spejling
-      hands = lm.map(pts => ({
-        keypoints: pts.map(pt => {
-          let x = pt.x * vw;
-          let y = pt.y * vh;
-          x = vw - x;                 // SPEJL
-          return { x: x * sx, y: y * sy };
-        }),
-      }));
-
-      // hvis du vil logge:
-      // if (lm.length) console.log('Hands:', lm.length);
-    } catch {}
-
-    requestAnimationFrame(step);
-  };
-
-  requestAnimationFrame(step);
-  handLoopStop = () => { alive = false; };
-}
-
-// ansigts-bounds
 function currentFaceBounds(){
   if (faces.length === 0) return null;
   const face = faces[0];
-  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = Infinity * -1;
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
   for (let i = 0; i < faceOutline.length; i++) {
     const kp = face.keypoints[faceOutline[i]];
     if (kp.x < minX) minX = kp.x;
@@ -468,38 +371,36 @@ function currentFaceBounds(){
     if (kp.y < minY) minY = kp.y;
     if (kp.y > maxY) maxY = kp.y;
   }
-  return { x: minX, y: minY, w: maxX - minX, h: maxY - minY, cx: (minX + maxX)/2, cy: (minY + maxY)/2 };
+  return { 
+    x: minX,
+    y: minY,
+    w: maxX - minX,
+    h: maxY - minY,
+    cx: (minX + maxX) / 2,
+    cy: (minY + maxY) / 2
+  };
 }
 
-// alle hånd-bounds
-function currentAllHandBounds() {
-  const out = [];
-  for (const h of hands || []) {
-    const pts = h?.keypoints || [];
-    if (!pts.length) continue;
-    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-    for (const {x, y} of pts) {
-      if (x < minX) minX = x;
-      if (x > maxX) maxX = x;
-      if (y < minY) minY = y;
-      if (y > maxY) maxY = y;
-    }
-    out.push({ 
-      x: minX, y: minY, 
-      w: maxX - minX, h: maxY - minY, 
-      cx: (minX + maxX)/2, cy: (minY + maxY)/2 
-    });
-  }
-  return out;
-}
 
 async function buildStickerPNG(p) {
-  if (!g.maskedImg || faces.length === 0) return null;
+  const face = faces[0];
 
-  const fb = currentFaceBounds();
-  const size  = (Math.max(fb.w, fb.h) * 2) | 0;
-  const centerX = fb.cx, centerY = fb.cy;
+  // bbox omkring face
+  let minX = p.width, maxX = 0, minY = p.height, maxY = 0;
+  for (let i = 0; i < faceOutline.length; i++) {
+    const kp = face.keypoints[faceOutline[i]];
+    if (kp.x < minX) minX = kp.x;
+    if (kp.x > maxX) maxX = kp.x;
+    if (kp.y < minY) minY = kp.y;
+    if (kp.y > maxY) maxY = kp.y;
+  }
+  const faceW = maxX - minX;
+  const faceH = maxY - minY;
+  const size = (Math.max(faceW, faceH) * 2) | 0;
+  const centerX = (minX + maxX) / 2;
+  const centerY = (minY + maxY) / 2;
 
+  // byg sticker på offscreen square
   const square = p.createGraphics(size, size);
   square.pixelDensity(1);
   square.clear();
@@ -508,25 +409,32 @@ async function buildStickerPNG(p) {
   const offsetY = size / 2 - centerY;
   square.image(g.maskedImg, offsetX, offsetY);
 
-  // face-outline ovenpå
+  // outline
+  let cx = 0, cy = 0;
+  for (let i = 0; i < faceOutline.length; i++) {
+    const kp = face.keypoints[faceOutline[i]];
+    cx += kp.x; cy += kp.y;
+  }
+  cx /= faceOutline.length; cy /= faceOutline.length;
+
   square.push();
   square.noFill();
   square.stroke(255);
   square.strokeWeight(10);
   square.beginShape();
   for (let i = 0; i < faceOutline.length; i++) {
-    const kp = faces[0].keypoints[faceOutline[i]];
-    const vx = kp.x - fb.cx, vy = kp.y - fb.cy;
-    const ex = fb.cx + vx * FACE_EXPAND;
-    const ey = fb.cy + vy * FACE_EXPAND;
+    const kp = face.keypoints[faceOutline[i]];
+    const vx = kp.x - cx, vy = kp.y - cy;
+    const ex = cx + vx * FACE_EXPAND;
+    const ey = cy + vy * FACE_EXPAND;
     const px = ex - centerX + size / 2;
     const py = ey - centerY + size / 2;
     square.vertex(px, py);
   }
-  square.endShape(square.CLOSE);
+  square.endShape(p.CLOSE);
   square.pop();
 
-  // læg decos ovenpå
+  // læg alle decos ovenpå (samme rotation)
   for (const d of decos) {
     const angle = Math.atan2(d.y, d.x);
     const dx = d.x - centerX + size/2;
@@ -540,7 +448,8 @@ async function buildStickerPNG(p) {
     square.pop();
   }
 
-  return square.canvas.toDataURL('image/png');
+  const dataUrl = square.canvas.toDataURL('image/png');
+  return dataUrl;
 }
 
 async function pasteSticker() {
@@ -548,15 +457,17 @@ async function pasteSticker() {
     console.log('Ingen face detekteret');
     return;
   }
+
   const p = pInstance;
   const dataUrl = await buildStickerPNG(p);
-  if (!dataUrl) return;
 
   try {
     await window.miro?.board?.getInfo();
+
     const viewport = await window.miro.board.viewport.get();
     const { x, y, width, height } = viewport;
-    const cx = x + width / 2, cy = y + height / 2;
+    const cx = x + width / 2;
+    const cy = y + height / 2;
 
     const created = await window.miro.board.createImage({
       url: dataUrl,
@@ -568,7 +479,9 @@ async function pasteSticker() {
   } catch (e) {
     console.warn('Ikke i Miro eller createImage fejlede. Gemmer lokalt.', e);
     const a = document.createElement('a');
-    a.href = dataUrl; a.download = 'sticker.png'; a.click();
+    a.href = dataUrl;
+    a.download = 'sticker.png';
+    a.click();
   }
 }
 
@@ -591,11 +504,7 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   try { faceMesh?.detectStop?.(); } catch {}
-  try { handModel?.detectStop?.(); } catch {}
-  try { stopManualFaceDetect?.(); } catch {}
-  try { stopManualHandDetect?.(); } catch {}
-  try { handLoopStop?.(); } catch {}
-  try { handLandmarker?.close?.(); } catch {}
+  try { stopManualDetect?.(); } catch {}
   try { pInstance?.remove?.(); } catch {}
 });
 </script>
@@ -603,6 +512,12 @@ onBeforeUnmount(() => {
 <template>
   <div id="root">
     <div class="grid wrapper">
+      <!--
+      <div class="cs1 ce12">
+        <h1>Sticker Picker</h1>
+      </div>
+      -->
+
       <div class="canvas cs1 ce12">
         <div ref="canvasHost" style="min-height: 400px;"></div>
       </div>
