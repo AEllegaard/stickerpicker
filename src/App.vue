@@ -12,18 +12,23 @@ const inMiroRef = ref(false);
 const buttonLabel = ref('Save sticker locally');
 
 // handles
-let P5, ml5, pInstance = null, faceMesh = null;
+let P5, ml5, pInstance = null, faceMesh = null, handpose = null;
 let faces = [];
+let hands = [];
 
 // deco-objekter på lærredet
 let decos = [];
 
 // fallback loop stopper
-let stopManualDetect = null;
+let stopManualFaceDetect = null;
+let stopManualHandDetect = null;
 
 // face konstanter
 const FACE_EXPAND = 1.3;
 const faceOutline = [10,338,297,332,284,251,389,356,447,366,401,288,397,365,379,378,400,377,152,148,176,149,150,136,172,58,132,93,234,127,162,103,67];
+
+// hånd konstanter (brug alle punkter + konveks hylster)
+const HAND_EXPAND = 1.15; // let op pustning af hylster
 
 // tegne-ressourcer
 let g = {
@@ -86,6 +91,7 @@ class Deco {
     } if (this.x < VID_W/2 - 20){
       return Math.atan2(-this.y, this.x); // peger mod (0,0) spejlet  
     }
+    return 0;
   }
   draw() {
     //tegner decor på ansigtet. 
@@ -134,20 +140,42 @@ const makeSketch = (p) => {
         }
       } catch {}
 
+      // FaceMesh
       faceMesh = await ml5.faceMesh({
         maxFaces: 1,
         refineLandmarks: false,
         flipped: true
       });
-
       await waitForModel(faceMesh, 15000);
 
       try {
         faceMesh.detectStart(g.video.elt, (results) => { faces = results || []; });
         console.log('FaceMesh detectStart kører');
       } catch (e) {
-        console.warn('detectStart fejlede, skifter til manuelt loop', e);
-        startManualDetectLoop();
+        console.warn('Face detectStart fejlede, skifter til manuelt loop', e);
+        startManualFaceDetectLoop();
+      }
+
+      // Hands
+      try {
+        handpose = await ml5.handpose({
+          flipped: true,
+          maxHands: 2,
+        });
+      } catch (e) {
+        console.warn('ml5.handpose kunne ikke initialiseres', e);
+      }
+
+      if (handpose) {
+        try {
+          // nogle versioner har detectStart
+          handpose.detectStart?.(g.video.elt, (res) => { hands = normalizeHands(res); });
+          if (!handpose.detectStart) throw new Error('ingen detectStart på handpose');
+          console.log('Handpose detectStart kører');
+        } catch (e) {
+          console.warn('Hand detectStart fejlede, skifter til manuelt loop', e);
+          startManualHandDetectLoop();
+        }
       }
     })().catch(console.error);
   };
@@ -173,46 +201,39 @@ const makeSketch = (p) => {
     // dekorationspanel
     drawPalette(p);
 
+    // byg maske: ansigt + hænder
+    let anyMask = false;
+
     if (faces.length > 0) {
-      const face = faces[0];
+      anyMask = true;
+      const fPts = faceExpandedOutlinePoints(faces[0]);
+      drawPolygon(g.maskG, fPts);
+    }
 
-      // centrum
-      let cx = 0, cy = 0;
-      for (let i = 0; i < faceOutline.length; i++) {
-        const kp = face.keypoints[faceOutline[i]];
-        cx += kp.x; cy += kp.y;
+    if (hands.length > 0) {
+      for (const h of hands) {
+        const hull = handExpandedHullPoints(h);
+        if (hull && hull.length >= 3) {
+          anyMask = true;
+          drawPolygon(g.maskG, hull);
+        }
       }
-      cx /= faceOutline.length; cy /= faceOutline.length;
+    }
 
-      // maske
-      g.maskG.beginShape();
-      for (let i = 0; i < faceOutline.length; i++) {
-        const kp = face.keypoints[faceOutline[i]];
-        const vx = kp.x - cx, vy = kp.y - cy;
-        g.maskG.vertex(cx + vx * FACE_EXPAND, cy + vy * FACE_EXPAND);
-      }
-      g.maskG.endShape(p.CLOSE);
-
+    if (anyMask) {
       const masked = g.pg.get();
       masked.mask(g.maskG.get());
       g.maskedImg = masked;
-
-      // ansigt
       p.image(g.maskedImg, 0, 0, VID_W, VID_H);
 
-      // outline
-      p.push();
-      p.noFill();
-      p.stroke(255);
-      p.strokeWeight(10);
-      p.beginShape();
-      for (let i = 0; i < faceOutline.length; i++) {
-        const kp = face.keypoints[faceOutline[i]];
-        const vx = kp.x - cx, vy = kp.y - cy;
-        p.vertex(cx + vx * FACE_EXPAND, cy + vy * FACE_EXPAND);
+      // visuelle outlines
+      if (faces.length > 0) drawPolyline(p, faceExpandedOutlinePoints(faces[0]));
+      if (hands.length > 0) {
+        for (const h of hands) {
+          const hull = handExpandedHullPoints(h);
+          if (hull && hull.length >= 3) drawPolyline(p, hull);
+        }
       }
-      p.endShape(p.CLOSE);
-      p.pop();
     } else {
       g.maskedImg = null;
     }
@@ -300,12 +321,7 @@ const makeSketch = (p) => {
 
   function faceCenterOrFallback() {
     if (faces.length > 0) {
-      let cx = 0, cy = 0;
-      for (let i = 0; i < faceOutline.length; i++) {
-        const kp = faces[0].keypoints[faceOutline[i]];
-        cx += kp.x; cy += kp.y;
-      }
-      cx /= faceOutline.length; cy /= faceOutline.length;
+      const { cx, cy } = currentFaceBounds();
       return { x: cx, y: cy };
     }
     return { x: VID_W/2, y: VID_H/2 };
@@ -349,7 +365,7 @@ function waitForModel(fm, timeoutMs = 15000) {
   });
 }
 
-function startManualDetectLoop() {
+function startManualFaceDetectLoop() {
   let alive = true;
   const step = async () => {
     if (!alive) return;
@@ -360,7 +376,31 @@ function startManualDetectLoop() {
     requestAnimationFrame(step);
   };
   step();
-  stopManualDetect = () => { alive = false; };
+  stopManualFaceDetect = () => { alive = false; };
+}
+
+function startManualHandDetectLoop() {
+  if (!handpose) return;
+  let alive = true;
+  const step = async () => {
+    if (!alive) return;
+    try {
+      const res = await handpose.detect(g.video.elt);
+      hands = normalizeHands(res);
+    } catch {}
+    requestAnimationFrame(step);
+  };
+  step();
+  stopManualHandDetect = () => { alive = false; };
+}
+
+function normalizeHands(res) {
+  // ml5.handpose kan returnere forskelligt format på tværs af versioner
+  if (!res) return [];
+  if (Array.isArray(res)) return res; // allerede en liste
+  if (res.hands) return res.hands; // evt. wrapper
+  if (res.predictions) return res.predictions; // ældre tfjs handpose
+  return [];
 }
 
 function currentFaceBounds(){
@@ -384,18 +424,90 @@ function currentFaceBounds(){
   };
 }
 
-
-async function buildStickerPNG(p) {
-  const face = faces[0];
-
-  // bbox omkring face
-  let minX = p.width, maxX = 0, minY = p.height, maxY = 0;
+function faceExpandedOutlinePoints(face) {
+  // beregn centrum
+  let cx = 0, cy = 0;
   for (let i = 0; i < faceOutline.length; i++) {
     const kp = face.keypoints[faceOutline[i]];
-    if (kp.x < minX) minX = kp.x;
-    if (kp.x > maxX) maxX = kp.x;
-    if (kp.y < minY) minY = kp.y;
-    if (kp.y > maxY) maxY = kp.y;
+    cx += kp.x; cy += kp.y;
+  }
+  cx /= faceOutline.length; cy /= faceOutline.length;
+  const pts = [];
+  for (let i = 0; i < faceOutline.length; i++) {
+    const kp = face.keypoints[faceOutline[i]];
+    const vx = kp.x - cx, vy = kp.y - cy;
+    pts.push({ x: cx + vx * FACE_EXPAND, y: cy + vy * FACE_EXPAND });
+  }
+  return pts;
+}
+
+function handExpandedHullPoints(hand) {
+  // hånd punkter kan hedde keypoints eller landmarks
+  const pts = (hand.keypoints || hand.landmarks || []).map(pt => ({ x: pt.x ?? pt[0], y: pt.y ?? pt[1] }));
+  if (pts.length < 3) return null;
+  const hull = convexHull(pts);
+  // pust ud fra centroid
+  let cx = 0, cy = 0;
+  for (const p of hull) { cx += p.x; cy += p.y; }
+  cx /= hull.length; cy /= hull.length;
+  const out = hull.map(p => ({ x: cx + (p.x - cx) * HAND_EXPAND, y: cy + (p.y - cy) * HAND_EXPAND }));
+  return out;
+}
+
+// Monotonic chain konveks hylster
+function convexHull(points) {
+  const pts = points.slice().sort((a,b)=> a.x===b.x ? a.y-b.y : a.x-b.x);
+  if (pts.length <= 1) return pts;
+  const cross = (o,a,b)=> (a.x-o.x)*(b.y-o.y) - (a.y-o.y)*(b.x-o.x);
+  const lower = [];
+  for (const p of pts) {
+    while (lower.length >= 2 && cross(lower[lower.length-2], lower[lower.length-1], p) <= 0) lower.pop();
+    lower.push(p);
+  }
+  const upper = [];
+  for (let i = pts.length-1; i>=0; i--) {
+    const p = pts[i];
+    while (upper.length >= 2 && cross(upper[upper.length-2], upper[upper.length-1], p) <= 0) upper.pop();
+    upper.push(p);
+  }
+  upper.pop(); lower.pop();
+  return lower.concat(upper);
+}
+
+function drawPolygon(gfx, pts) {
+  gfx.beginShape();
+  for (const p of pts) gfx.vertex(p.x, p.y);
+  gfx.endShape(gfx._renderer?.p?.CLOSE ?? 'close');
+}
+
+function drawPolyline(p, pts) {
+  p.push();
+  p.noFill();
+  p.stroke(255);
+  p.strokeWeight(10);
+  p.beginShape();
+  for (const v of pts) p.vertex(v.x, v.y);
+  p.endShape(p.CLOSE);
+  p.pop();
+}
+
+async function buildStickerPNG(p) {
+  // saml alle punkter der definerer omkredsen af sticker
+  const shapePts = [];
+  if (faces.length > 0) shapePts.push(...faceExpandedOutlinePoints(faces[0]));
+  for (const h of hands) {
+    const hull = handExpandedHullPoints(h);
+    if (hull) shapePts.push(...hull);
+  }
+  if (shapePts.length < 3) return null;
+
+  // bbox
+  let minX = p.width, maxX = 0, minY = p.height, maxY = 0;
+  for (const pt of shapePts) {
+    if (pt.x < minX) minX = pt.x;
+    if (pt.x > maxX) maxX = pt.x;
+    if (pt.y < minY) minY = pt.y;
+    if (pt.y > maxY) maxY = pt.y;
   }
   const faceW = maxX - minX;
   const faceH = maxY - minY;
@@ -410,32 +522,28 @@ async function buildStickerPNG(p) {
 
   const offsetX = size / 2 - centerX;
   const offsetY = size / 2 - centerY;
-  square.image(g.maskedImg, offsetX, offsetY);
 
-  // outline
-  let cx = 0, cy = 0;
-  for (let i = 0; i < faceOutline.length; i++) {
-    const kp = face.keypoints[faceOutline[i]];
-    cx += kp.x; cy += kp.y;
+  // rekonstruer masken lokalt
+  const tmpMask = p.createGraphics(VID_W, VID_H);
+  tmpMask.clear();
+  tmpMask.noStroke(); tmpMask.fill(255);
+  if (faces.length > 0) drawPolygon(tmpMask, faceExpandedOutlinePoints(faces[0]));
+  for (const h of hands) {
+    const hull = handExpandedHullPoints(h);
+    if (hull) drawPolygon(tmpMask, hull);
   }
-  cx /= faceOutline.length; cy /= faceOutline.length;
 
-  square.push();
-  square.noFill();
-  square.stroke(255);
-  square.strokeWeight(10);
-  square.beginShape();
-  for (let i = 0; i < faceOutline.length; i++) {
-    const kp = face.keypoints[faceOutline[i]];
-    const vx = kp.x - cx, vy = kp.y - cy;
-    const ex = cx + vx * FACE_EXPAND;
-    const ey = cy + vy * FACE_EXPAND;
-    const px = ex - centerX + size / 2;
-    const py = ey - centerY + size / 2;
-    square.vertex(px, py);
+  const videoCopy = g.pg.get();
+  videoCopy.mask(tmpMask.get());
+
+  square.image(videoCopy, offsetX, offsetY);
+
+  // tegne outlines
+  if (faces.length > 0) drawPolylineLocal(square, faceExpandedOutlinePoints(faces[0]), centerX, centerY, size);
+  for (const h of hands) {
+    const hull = handExpandedHullPoints(h);
+    if (hull) drawPolylineLocal(square, hull, centerX, centerY, size);
   }
-  square.endShape(p.CLOSE);
-  square.pop();
 
   // læg alle decos ovenpå (samme rotation)
   for (const d of decos) {
@@ -455,14 +563,29 @@ async function buildStickerPNG(p) {
   return dataUrl;
 }
 
-async function pasteSticker() {
-  if (!g.maskedImg || faces.length === 0) {
-    console.log('Ingen face detekteret');
-    return;
+function drawPolylineLocal(square, pts, cx, cy, size) {
+  square.push();
+  square.noFill();
+  square.stroke(255);
+  square.strokeWeight(10);
+  square.beginShape();
+  for (const v of pts) {
+    const px = v.x - cx + size / 2;
+    const py = v.y - cy + size / 2;
+    square.vertex(px, py);
   }
+  square.endShape(square.CLOSE);
+  square.pop();
+}
 
+async function pasteSticker() {
+  if (!g.pg) return;
   const p = pInstance;
   const dataUrl = await buildStickerPNG(p);
+  if (!dataUrl) {
+    console.log('Intet motiv fundet');
+    return;
+  }
 
   try {
     await window.miro?.board?.getInfo();
@@ -507,7 +630,9 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   try { faceMesh?.detectStop?.(); } catch {}
-  try { stopManualDetect?.(); } catch {}
+  try { handpose?.detectStop?.(); } catch {}
+  try { stopManualFaceDetect?.(); } catch {}
+  try { stopManualHandDetect?.(); } catch {}
   try { pInstance?.remove?.(); } catch {}
 });
 </script>
@@ -515,12 +640,6 @@ onBeforeUnmount(() => {
 <template>
   <div id="root">
     <div class="grid wrapper">
-      <!--
-      <div class="cs1 ce12">
-        <h1>Sticker Picker</h1>
-      </div>
-      -->
-
       <div class="canvas cs1 ce12">
         <div ref="canvasHost" style="min-height: 400px;"></div>
       </div>
