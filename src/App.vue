@@ -1,7 +1,5 @@
 <script setup>
 import { onMounted, onBeforeUnmount, ref } from 'vue';
-import * as handposeModel from '@tensorflow-models/hand-pose-detection';
-import '@tensorflow/tfjs-backend-webgl';
 import './assets/style.css';
 
 // import deco-ressourcer
@@ -381,27 +379,20 @@ function startManualFaceDetectLoop() {
   stopManualFaceDetect = () => { alive = false; };
 }
 
-const handDetector = await handposeModel.createDetector(
-  handposeModel.SupportedModels.MediaPipeHands,
-  { runtime: 'tfjs', modelType: 'lite' }
-);
-
-async function startManualHandDetectLoop() {
+function startManualHandDetectLoop() {
+  if (!handpose) return;
   let alive = true;
   const step = async () => {
     if (!alive) return;
     try {
-      const res = await handDetector.estimateHands(g.video.elt);
-      hands = res || [];
-    } catch (err) {
-      console.warn(err);
-    }
+      const res = await handpose.detect(g.video.elt);
+      hands = normalizeHands(res);
+    } catch {}
     requestAnimationFrame(step);
   };
   step();
   stopManualHandDetect = () => { alive = false; };
 }
-
 
 function normalizeHands(res) {
   // ml5.handpose kan returnere forskelligt format på tværs af versioner
