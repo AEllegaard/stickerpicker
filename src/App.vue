@@ -12,7 +12,8 @@ const inMiroRef = ref(false);
 const buttonLabel = ref('Save sticker locally');
 
 // handles
-let P5, ml5, pInstance = null, faceMesh = null, handpose = null;
+let P5, ml5, pInstance = null, faceMesh = null;
+let handposeModel = null, tf = null, handDetector = null;
 let faces = [];
 let hands = [];
 
@@ -128,19 +129,20 @@ const makeSketch = (p) => {
     g.pg    = p.createGraphics(VID_W, VID_H);
     g.maskG = p.createGraphics(VID_W, VID_H);
 
-    // ml5 initialisering
+    // initialisering
     (async () => {
       await waitForVideo(g.video.elt);
 
+      // tf backend (deles af ml5 og TFJS)
       try {
-        const tf = ml5?.tf;
-        if (tf?.setBackend) {
-          try { await tf.setBackend('webgl'); await tf.ready(); }
-          catch { await tf.setBackend('wasm'); await tf.ready(); }
+        const _tf = ml5?.tf || tf;
+        if (_tf?.setBackend) {
+          try { await _tf.setBackend('webgl'); await _tf.ready(); }
+          catch { await _tf.setBackend('wasm'); await _tf.ready(); }
         }
       } catch {}
 
-      // FaceMesh
+      // FaceMesh via ml5
       faceMesh = await ml5.faceMesh({
         maxFaces: 1,
         refineLandmarks: false,
@@ -156,26 +158,15 @@ const makeSketch = (p) => {
         startManualFaceDetectLoop();
       }
 
-      // Hands
+      // Hands via TFJS hand-pose-detection (stabil på tværs af ml5-versioner)
       try {
-        handpose = await ml5.handpose({
-          flipped: true,
-          maxHands: 2,
-        });
+        handDetector = await handposeModel.createDetector(
+          handposeModel.SupportedModels.MediaPipeHands,
+          { runtime: 'tfjs', modelType: 'lite' }
+        );
+        startManualHandDetectLoop();
       } catch (e) {
-        console.warn('ml5.handpose kunne ikke initialiseres', e);
-      }
-
-      if (handpose) {
-        try {
-          // nogle versioner har detectStart
-          handpose.detectStart?.(g.video.elt, (res) => { hands = normalizeHands(res); });
-          if (!handpose.detectStart) throw new Error('ingen detectStart på handpose');
-          console.log('Handpose detectStart kører');
-        } catch (e) {
-          console.warn('Hand detectStart fejlede, skifter til manuelt loop', e);
-          startManualHandDetectLoop();
-        }
+        console.warn('Hand detector kunne ikke initialiseres', e);
       }
     })().catch(console.error);
   };
@@ -380,13 +371,14 @@ function startManualFaceDetectLoop() {
 }
 
 function startManualHandDetectLoop() {
-  if (!handpose) return;
+  if (!handDetector) return;
   let alive = true;
   const step = async () => {
     if (!alive) return;
     try {
-      const res = await handpose.detect(g.video.elt);
-      hands = normalizeHands(res);
+      // spejler output så det matcher vores spejlede video-tegning
+      const res = await handDetector.estimateHands(g.video.elt, { flipHorizontal: true });
+      hands = res || [];
     } catch {}
     requestAnimationFrame(step);
   };
@@ -395,11 +387,11 @@ function startManualHandDetectLoop() {
 }
 
 function normalizeHands(res) {
-  // ml5.handpose kan returnere forskelligt format på tværs af versioner
+  // ikke brugt længere, men bevares hvis du vil understøtte ml5 i fremtiden
   if (!res) return [];
-  if (Array.isArray(res)) return res; // allerede en liste
-  if (res.hands) return res.hands; // evt. wrapper
-  if (res.predictions) return res.predictions; // ældre tfjs handpose
+  if (Array.isArray(res)) return res;
+  if (res.hands) return res.hands;
+  if (res.predictions) return res.predictions;
   return [];
 }
 
@@ -442,7 +434,7 @@ function faceExpandedOutlinePoints(face) {
 }
 
 function handExpandedHullPoints(hand) {
-  // hånd punkter kan hedde keypoints eller landmarks
+  // tfjs-estimateHands: keypoints [{x,y,name}, ...]
   const pts = (hand.keypoints || hand.landmarks || []).map(pt => ({ x: pt.x ?? pt[0], y: pt.y ?? pt[1] }));
   if (pts.length < 3) return null;
   const hull = convexHull(pts);
@@ -615,7 +607,18 @@ onMounted(async () => {
   const p5Mod = await import('p5');
   P5 = p5Mod.default;
   const ml5Mod = await import('ml5');
-  ml5 = ml5Mod.default;
+  ml5 = ml5Mod.default || ml5Mod; // visse bundlere eksporterer som default
+
+  // TFJS + handpose model
+  await import('@tensorflow/tfjs-backend-webgl'); // registrerer webgl backend
+  const handMod = await import('@tensorflow-models/hand-pose-detection');
+  handposeModel = handMod;
+  // tf-core prøves fra ml5 først, ellers lazy-import
+  try { tf = ml5?.tf; } catch {}
+  if (!tf) {
+    const tfcore = await import('@tensorflow/tfjs-core');
+    tf = tfcore;
+  }
 
   inMiroRef.value = await probeMiro();
   buttonLabel.value = inMiroRef.value ? 'Paste sticker on the board' : 'Save sticker locally';
@@ -630,7 +633,6 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   try { faceMesh?.detectStop?.(); } catch {}
-  try { handpose?.detectStop?.(); } catch {}
   try { stopManualFaceDetect?.(); } catch {}
   try { stopManualHandDetect?.(); } catch {}
   try { pInstance?.remove?.(); } catch {}
