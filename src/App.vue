@@ -192,7 +192,7 @@ const makeSketch = (p) => {
     // dekorationspanel
     drawPalette(p);
 
-    // byg maske: ansigt + hænder
+    // byg UNION maske: ansigt + hænder
     let anyMask = false;
 
     if (faces.length > 0) {
@@ -212,19 +212,30 @@ const makeSketch = (p) => {
     }
 
     if (anyMask) {
-      const masked = g.pg.get();
-      masked.mask(g.maskG.get());
-      g.maskedImg = masked;
+      // luk små huller og lav samlet outline
+      const outlinePx = 12; // tykkelse på hvid kant
+      const closePx   = 6;  // samler sprækker mellem fingre og mellem former
+
+      const closedMask = blurThreshold(g.maskG, closePx);
+      const expanded   = blurThresholdImage(closedMask, outlinePx);
+
+      // tegn samlet hvid outline
+      const whiteG = p.createGraphics(VID_W, VID_H);
+      whiteG.background(255);
+      whiteG.mask(expanded);
+      p.image(whiteG, 0, 0);
+
+      // tegn selve motivet med den lukkede maske ovenpå outlinen
+      const videoCopy = g.pg.get();
+      const unionMasked = videoCopy.get();
+      unionMasked.mask(closedMask);
+      g.maskedImg = unionMasked;
       p.image(g.maskedImg, 0, 0, VID_W, VID_H);
 
-      // visuelle outlines
-      if (faces.length > 0) drawPolyline(p, faceExpandedOutlinePoints(faces[0]));
-      if (hands.length > 0) {
-        for (const h of hands) {
-          const hull = handExpandedHullPoints(h);
-          if (hull && hull.length >= 3) drawPolyline(p, hull);
-        }
-      }
+      // debug outlines slået fra, da vi nu har samlet outline
+      // vil du se polygonerne, kan du slå nedenstående til
+      // if (faces.length > 0) drawPolyline(p, faceExpandedOutlinePoints(faces[0]));
+      // for (const h of hands) { const hull = handExpandedHullPoints(h); if (hull) drawPolyline(p, hull); }
     } else {
       g.maskedImg = null;
     }
@@ -483,14 +494,125 @@ function drawPolyline(p, pts) {
   p.pop();
 }
 
+// Slører og threshold'er en grafiks alpha til en binær maske (Image)
+function blurThreshold(srcG, blurPx = 6) {
+  const tmp = srcG.get();
+  const c = tmp.canvas;
+  const ctx = c.getContext('2d');
+  ctx.filter = `blur(${blurPx}px)`;
+  // tegn dig selv ovenpå med blur
+  ctx.globalCompositeOperation = 'source-in';
+  ctx.drawImage(c, 0, 0);
+  ctx.filter = 'none';
+  // threshold: lav alt ikke-transparent helt hvidt
+  const imgData = ctx.getImageData(0, 0, c.width, c.height);
+  const data = imgData.data;
+  for (let i = 0; i < data.length; i += 4) {
+    const a = data[i + 3];
+    const on = a > 16 ? 255 : 0;
+    data[i] = 255; data[i+1] = 255; data[i+2] = 255; data[i+3] = on;
+  }
+  ctx.putImageData(imgData, 0, 0);
+  return tmp; // p5.Image
+}
+
+// tager et p5.Image og laver ekstra udvidelse via blur + threshold
+function blurThresholdImage(img, blurPx = 8) {
+  const gfx = new window.p5.Graphics(img.width, img.height);
+  const ctx = gfx.canvas.getContext('2d');
+  ctx.clearRect(0, 0, img.width, img.height);
+  ctx.drawImage(img.canvas, 0, 0);
+  ctx.filter = `blur(${blurPx}px)`;
+  ctx.globalCompositeOperation = 'source-in';
+  ctx.drawImage(gfx.canvas, 0, 0);
+  ctx.filter = 'none';
+  const imgData = ctx.getImageData(0, 0, img.width, img.height);
+  const data = imgData.data;
+  for (let i = 0; i < data.length; i += 4) {
+    const a = data[i + 3];
+    const on = a > 16 ? 255 : 0;
+    data[i] = 255; data[i+1] = 255; data[i+2] = 255; data[i+3] = on;
+  }
+  ctx.putImageData(imgData, 0, 0);
+  return gfx.get();
+}
+
 async function buildStickerPNG(p) {
-  // saml alle punkter der definerer omkredsen af sticker
-  const shapePts = [];
-  if (faces.length > 0) shapePts.push(...faceExpandedOutlinePoints(faces[0]));
+  // union maske som før
+  const unionG = p.createGraphics(VID_W, VID_H);
+  unionG.clear();
+  unionG.noStroke(); unionG.fill(255);
+  if (faces.length > 0) drawPolygon(unionG, faceExpandedOutlinePoints(faces[0]));
   for (const h of hands) {
     const hull = handExpandedHullPoints(h);
-    if (hull) shapePts.push(...hull);
+    if (hull) drawPolygon(unionG, hull);
   }
+
+  // luk små huller og lav outline
+  const closePx = 6, outlinePx = 12;
+  const closedMask = blurThreshold(unionG, closePx);
+  const expanded   = blurThresholdImage(closedMask, outlinePx);
+
+  // bbox fra den lukkede maske
+  const bounds = maskBoundsFromImage(closedMask);
+  if (!bounds) return null;
+  const { minX, minY, maxX, maxY } = bounds;
+  const faceW = maxX - minX;
+  const faceH = maxY - minY;
+  const size = (Math.max(faceW, faceH) * 2) | 0;
+  const centerX = (minX + maxX) / 2;
+  const centerY = (minY + maxY) / 2;
+
+  const square = p.createGraphics(size, size);
+  square.pixelDensity(1);
+  square.clear();
+
+  const offsetX = size / 2 - centerX;
+  const offsetY = size / 2 - centerY;
+
+  // tegn samlet hvid outline
+  const whiteG = p.createGraphics(VID_W, VID_H);
+  whiteG.background(255);
+  whiteG.mask(expanded);
+  square.image(whiteG, offsetX, offsetY);
+
+  // tegn union-maskeret video ovenpå
+  const videoCopy = g.pg.get();
+  const unionMasked = videoCopy.get();
+  unionMasked.mask(closedMask);
+  square.image(unionMasked, offsetX, offsetY);
+
+  // læg decos
+  for (const d of decos) {
+    const dx = d.x - centerX + size/2;
+    const dy = d.y - centerY + size/2;
+    const angle = Math.atan2(d.y, d.x);
+    square.push();
+    square.translate(dx, dy);
+    square.rotate(angle);
+    square.imageMode(square.CENTER);
+    square.image(d.img, 0, 0, d.w, d.h);
+    square.pop();
+  }
+
+  const dataUrl = square.canvas.toDataURL('image/png');
+  return dataUrl;
+}
+
+function maskBoundsFromImage(img) {
+  const c = img.canvas;
+  const ctx = c.getContext('2d');
+  const d = ctx.getImageData(0,0,c.width,c.height).data;
+  let minX = c.width, minY = c.height, maxX = -1, maxY = -1;
+  for (let y = 0; y < c.height; y++) {
+    for (let x = 0; x < c.width; x++) {
+      const i = (y*c.width + x) * 4 + 3; // alpha
+      if (d[i] > 0) { if (x < minX) minX = x; if (x > maxX) maxX = x; if (y < minY) minY = y; if (y > maxY) maxY = y; }
+    }
+  }
+  if (maxX < 0) return null;
+  return { minX, minY, maxX, maxY };
+}
   if (shapePts.length < 3) return null;
 
   // bbox
@@ -553,7 +675,7 @@ async function buildStickerPNG(p) {
 
   const dataUrl = square.canvas.toDataURL('image/png');
   return dataUrl;
-}
+
 
 function drawPolylineLocal(square, pts, cx, cy, size) {
   square.push();
