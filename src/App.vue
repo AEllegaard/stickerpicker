@@ -29,7 +29,7 @@ const FACE_EXPAND = 1.3;
 const faceOutline = [10,338,297,332,284,251,389,356,447,366,401,288,397,365,379,378,400,377,152,148,176,149,150,136,172,58,132,93,234,127,162,103,67];
 
 // hånd konstanter (brug alle punkter + konveks hylster)
-const HAND_EXPAND = 1.15; // let op pustning af hylster
+const HAND_EXPAND = 1; // let op pustning af hylster
 
 // tegne-ressourcer
 let g = {
@@ -84,18 +84,16 @@ class Deco {
     this.y = my - this._dy;
   }
   stopDrag() { this.dragging = false; }
-//peger decor mod centrum, og flipper på midten
+  // peger decor mod centrum, og flipper på midten
   angleToOrigin() {
     if (this.x > VID_W/2 + 20){
-      return Math.atan2(this.y, this.x); // peger mod (0,0)
-
+      return Math.atan2(this.y, this.x);
     } if (this.x < VID_W/2 - 20){
-      return Math.atan2(-this.y, this.x); // peger mod (0,0) spejlet  
+      return Math.atan2(-this.y, this.x);
     }
     return 0;
   }
   draw() {
-    //tegner decor på ansigtet. 
     const p = this.p;
     p.push();
     p.translate(this.x, this.y);
@@ -158,7 +156,7 @@ const makeSketch = (p) => {
         startManualFaceDetectLoop();
       }
 
-      // Hands via TFJS hand-pose-detection (stabil på tværs af ml5-versioner)
+      // Hands via TFJS hand-pose-detection
       try {
         handDetector = await handposeModel.createDetector(
           handposeModel.SupportedModels.MediaPipeHands,
@@ -212,18 +210,16 @@ const makeSketch = (p) => {
     }
 
     if (anyMask) {
+      // anvend masken
       const masked = g.pg.get();
       masked.mask(g.maskG.get());
       g.maskedImg = masked;
       p.image(g.maskedImg, 0, 0, VID_W, VID_H);
 
-      // visuelle outlines
-      if (faces.length > 0) drawPolyline(p, faceExpandedOutlinePoints(faces[0]));
-      if (hands.length > 0) {
-        for (const h of hands) {
-          const hull = handExpandedHullPoints(h);
-          if (hull && hull.length >= 3) drawPolyline(p, hull);
-        }
+      // ÉN samlet kontur udledt af masken
+      const outline = extractUnifiedOutlineFromMask(g.maskG, 128);
+      if (outline && outline.length > 1) {
+        drawPolyline(p, outline);
       }
     } else {
       g.maskedImg = null;
@@ -240,13 +236,13 @@ const makeSketch = (p) => {
       const pos = faceCenterOrFallback();
       const img = p.assets[hit.key];
 
-      //find ansigts bredden
+      // find ansigts bredden
       const fb = currentFaceBounds();
 
-      //basis på 70% af ansigts bredden
+      // basis på 70% af ansigts bredden
       let base = fb ? Math.max(fb.w, fb.h) * 1 : 100;
 
-      //hold den inden for grænserne
+      // hold den inden for grænserne
       base = Math.max(80, Math.min(base, 220));
 
       decos.push(new Deco(p, img, pos.x, pos.y, base, base));
@@ -267,7 +263,7 @@ const makeSketch = (p) => {
   p.mouseDragged = () => { for (const d of decos) d.drag(p.mouseX, p.mouseY); };
   p.mouseReleased = () => { for (const d of decos) d.stopDrag(); };
 
-  //dobbeltklik fjerner øverste deco under musen
+  // dobbeltklik fjerner øverste deco under musen
   p.doubleClicked = () => {
     for (let i = decos.length - 1; i >= 0; i--) {
       if (decos[i].contains(p.mouseX, p.mouseY)) {
@@ -275,7 +271,7 @@ const makeSketch = (p) => {
         break;
       }
     }
-    return false; // forhindre evt. default
+    return false;
   };
 
   function drawPalette(p) {
@@ -386,15 +382,6 @@ function startManualHandDetectLoop() {
   stopManualHandDetect = () => { alive = false; };
 }
 
-function normalizeHands(res) {
-  // ikke brugt længere, men bevares hvis du vil understøtte ml5 i fremtiden
-  if (!res) return [];
-  if (Array.isArray(res)) return res;
-  if (res.hands) return res.hands;
-  if (res.predictions) return res.predictions;
-  return [];
-}
-
 function currentFaceBounds(){
   if (faces.length === 0) return null;
   const face = faces[0];
@@ -483,6 +470,121 @@ function drawPolyline(p, pts) {
   p.pop();
 }
 
+// ny hjælp: tegn fra punktliste i lokal buffer
+function drawPolylineLocalFromPts(square, pts) {
+  square.push();
+  square.noFill();
+  square.stroke(255);
+  square.strokeWeight(10);
+  square.beginShape();
+  for (const v of pts) square.vertex(v.x, v.y);
+  square.endShape(square.CLOSE);
+  square.pop();
+}
+
+// *** NYT ***
+// Udtræk samlet kontur fra masken via Moore boundary tracing
+function extractUnifiedOutlineFromMask(maskG, threshold = 128) {
+  const w = maskG.width, h = maskG.height;
+  maskG.loadPixels();
+  const pix = maskG.pixels;
+
+  const alphaAt = (x,y) => {
+    if (x < 0 || y < 0 || x >= w || y >= h) return 0;
+    return pix[4*(y*w + x) + 3] || 0;
+  };
+
+  // find startpixel i forgrund
+  let sx = -1, sy = -1;
+  for (let y = 0; y < h && sy === -1; y++) {
+    for (let x = 0; x < w; x++) {
+      if (alphaAt(x,y) >= threshold) { sx = x; sy = y; break; }
+    }
+  }
+  if (sy === -1) return [];
+
+  // Moore naboer i uret retning
+  const nbs = [
+    {dx: 1, dy: 0},  // Ø
+    {dx: 1, dy: 1},  // SØ
+    {dx: 0, dy: 1},  // S
+    {dx: -1, dy: 1}, // SV
+    {dx: -1, dy: 0}, // V
+    {dx: -1, dy: -1},// NV
+    {dx: 0, dy: -1}, // N
+    {dx: 1, dy: -1}  // NØ
+  ];
+
+  // start med at komme fra venstre
+  let bx = sx, by = sy;
+  let cx = sx - 1, cy = sy;
+
+  const outline = [];
+  outline.push({x: bx + 0.5, y: by + 0.5});
+
+  let guard = 0;
+  while (guard++ < w*h*8) {
+    // find index for c som nabo til b
+    let startK = 0;
+    for (let k = 0; k < 8; k++) {
+      if (bx + nbs[k].dx === cx && by + nbs[k].dy === cy) { startK = k; break; }
+    }
+    // scan naboer med uret fra naboen efter c
+    let found = false;
+    for (let i = 1; i <= 8; i++) {
+      const k = (startK + i) % 8;
+      const nx = bx + nbs[k].dx;
+      const ny = by + nbs[k].dy;
+      if (alphaAt(nx, ny) >= threshold) {
+        // næste kantpunkt
+        cx = bx + nbs[(k + 7) % 8].dx; // naboen før valgtes retning
+        cy = by + nbs[(k + 7) % 8].dy;
+        bx = nx; by = ny;
+        outline.push({x: bx + 0.5, y: by + 0.5});
+        found = true;
+        break;
+      }
+    }
+    if (!found) break; // frit sikkerhedsnet
+
+    // slutbetingelse
+    if (bx === sx && by === sy && cx === sx - 1 && cy === sy) break;
+  }
+
+  // let smoothing så linjen bliver pænere
+  return simplifyRDP(outline, 0.8);
+}
+
+// Ramer–Douglas–Peucker for let glatning
+function simplifyRDP(points, epsilon) {
+  if (points.length < 3) return points.slice();
+  const first = points[0], last = points[points.length - 1];
+
+  let index = -1, distMax = 0;
+  for (let i = 1; i < points.length - 1; i++) {
+    const d = perpDistance(points[i], first, last);
+    if (d > distMax) { index = i; distMax = d; }
+  }
+  if (distMax > epsilon) {
+    const left = simplifyRDP(points.slice(0, index + 1), epsilon);
+    const right = simplifyRDP(points.slice(index), epsilon);
+    return left.slice(0, -1).concat(right);
+  } else {
+    return [first, last];
+  }
+}
+
+function perpDistance(p, a, b) {
+  const x = p.x, y = p.y;
+  const x1 = a.x, y1 = a.y, x2 = b.x, y2 = b.y;
+  const dx = x2 - x1, dy = y2 - y1;
+  if (dx === 0 && dy === 0) return Math.hypot(x - x1, y - y1);
+  const t = ((x - x1)*dx + (y - y1)*dy) / (dx*dx + dy*dy);
+  const px = x1 + t*dx, py = y1 + t*dy;
+  return Math.hypot(x - px, y - py);
+}
+
+// bygger PNG med samlet kontur
 async function buildStickerPNG(p) {
   // saml alle punkter der definerer omkredsen af sticker
   const shapePts = [];
@@ -527,18 +629,21 @@ async function buildStickerPNG(p) {
 
   const videoCopy = g.pg.get();
   videoCopy.mask(tmpMask.get());
-
   square.image(videoCopy, offsetX, offsetY);
 
-  // tegne outlines
-  if (faces.length > 0) drawPolylineLocal(square, faceExpandedOutlinePoints(faces[0]), centerX, centerY, size);
-  for (const h of hands) {
-    const hull = handExpandedHullPoints(h);
-    if (hull) drawPolylineLocal(square, hull, centerX, centerY, size);
+  // *** NYT *** tegn kun én samlet kontur udledt af tmpMask
+  const outline = extractUnifiedOutlineFromMask(tmpMask, 128);
+  if (outline && outline.length > 1) {
+    const localOutline = outline.map(v => ({
+      x: v.x - centerX + size/2,
+      y: v.y - centerY + size/2
+    }));
+    drawPolylineLocalFromPts(square, localOutline);
   }
 
-  // læg alle decos ovenpå (samme rotation)
+  // læg alle decos ovenpå
   for (const d of decos) {
+    // behold samme rotationslogik som før
     const angle = Math.atan2(d.y, d.x);
     const dx = d.x - centerX + size/2;
     const dy = d.y - centerY + size/2;
@@ -553,21 +658,6 @@ async function buildStickerPNG(p) {
 
   const dataUrl = square.canvas.toDataURL('image/png');
   return dataUrl;
-}
-
-function drawPolylineLocal(square, pts, cx, cy, size) {
-  square.push();
-  square.noFill();
-  square.stroke(255);
-  square.strokeWeight(10);
-  square.beginShape();
-  for (const v of pts) {
-    const px = v.x - cx + size / 2;
-    const py = v.y - cy + size / 2;
-    square.vertex(px, py);
-  }
-  square.endShape(square.CLOSE);
-  square.pop();
 }
 
 async function pasteSticker() {
