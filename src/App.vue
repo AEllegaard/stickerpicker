@@ -11,6 +11,8 @@ const canvasHost = ref(null);
 const inMiroRef = ref(false);
 const buttonLabel = ref('Save sticker locally');
 
+const loading = ref(true); // loading state for face mesh
+
 // handles
 let P5, ml5, pInstance = null, faceMesh = null;
 // let handposeModel = null, tf = null, handDetector = null;
@@ -150,9 +152,11 @@ const makeSketch = (p) => {
       try {
         faceMesh.detectStart(g.video.elt, (results) => { faces = results || []; });
         console.log('FaceMesh detectStart kører');
+        loading.value = false; // face mesh is running, hide loading
       } catch (e) {
         console.warn('Face detectStart fejlede, skifter til manuelt loop', e);
         startManualFaceDetectLoop();
+        loading.value = false; // even fallback, hide loading
       }
 
       // Hands via TFJS hand-pose-detection
@@ -964,6 +968,10 @@ onBeforeUnmount(() => {
 
 <template>
   <div id="root">
+    <div v-if="loading" class="loading-overlay">
+      <div class="spinner"></div>
+      <div style="margin-top:16px; font-size:18px; color:#444;">Loading face mesh…</div>
+    </div>
     <div class="grid wrapper">
       <div class="canvas cs1 ce12">
         <div ref="canvasHost" style="min-height: 400px;"></div>
@@ -981,4 +989,26 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .canvas { background: #ececec; border: 1px solid #eee; border-radius: 8px; padding: 8px; }
+.loading-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(255,255,255,0.85);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.spinner {
+  width: 48px;
+  height: 48px;
+  border: 6px solid #ccc;
+  border-top: 6px solid #333;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
 </style>
