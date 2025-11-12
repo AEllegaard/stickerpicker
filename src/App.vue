@@ -29,7 +29,7 @@ const FACE_EXPAND = 1.3;
 const faceOutline = [10,338,297,332,284,251,389,356,447,366,401,288,397,365,379,378,400,377,152,148,176,149,150,136,172,58,132,93,234,127,162,103,67];
 
 // hånd konstanter
-const HAND_EXPAND = 1.03; // mindre, så dalene mellem fingre bevares - dybere dale
+const HAND_EXPAND = 0.98; // endnu dybere dale
 
 // tegne-ressourcer
 let g = {
@@ -509,7 +509,7 @@ function drawHandMaskIfNear(gfx, hand, faceBounds, maxDistPx = 20) {
   const palmW = handBaseWidth(kps) * 1.0;
   gfx.push();
   gfx.stroke(255);
-  gfx.strokeWeight(palmW * 0.85);
+  gfx.strokeWeight(palmW * 0.7);
   gfx.strokeCap(gfx.ROUND);
   gfx.noFill();
   gfx.beginShape();
