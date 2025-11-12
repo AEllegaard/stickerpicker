@@ -469,25 +469,6 @@ function handBaseWidth(kps) {
   return Math.hypot(idx.x - pinky.x, idx.y - pinky.y);
 }
 
-// skær små V-hak mellem fingre (så “prikkerne” læses tydeligt)
-function carveValley(gfx, pA, pB, toward, depth, width) {
-  const m = midPoint(pA, pB);
-  const vx = toward.x - m.x, vy = toward.y - m.y;
-  const len = Math.hypot(vx, vy) || 1;
-  const nx = (vx / len) * depth, ny = (vy / len) * depth;       // spids ind mod håndled
-  const px = -ny, py = nx;                                       // normal til begge sider
-  const wx = (px / Math.hypot(px, py)) * width;
-  const wy = (py / Math.hypot(px, py)) * width;
-
-  gfx.erase();
-  gfx.beginShape();
-  gfx.vertex(m.x + wx, m.y + wy);
-  gfx.vertex(m.x - wx, m.y - wy);
-  gfx.vertex(m.x + nx, m.y + ny);
-  gfx.endShape(gfx.CLOSE);
-  gfx.noErase();
-}
-
 // tegn rund palme + capsule fingre, kun hvis tæt på ansigtet
 function drawHandMaskIfNear(gfx, hand, faceBounds, maxDistPx = 20) {
   const kps = (hand.keypoints || hand.landmarks || []).map(pt => ({ x: pt.x ?? pt[0], y: pt.y ?? pt[1] }));
@@ -520,14 +501,6 @@ function drawHandMaskIfNear(gfx, hand, faceBounds, maxDistPx = 20) {
   // tegn palme
   drawFilledPoly(gfx, palm);
 
-  // skær tydelige dale mellem fingre
-  const baseW = clamp(handBaseWidth(kps) * 0.24, 10, 26);
-  const valleyDepth = baseW * 1.2;
-  const valleyWidth  = baseW * 0.55;
-  carveValley(gfx, kps[MCP.index],  kps[MCP.middle], kps[WRIST], valleyDepth, valleyWidth);
-  carveValley(gfx, kps[MCP.middle], kps[MCP.ring],   kps[WRIST], valleyDepth, valleyWidth);
-  carveValley(gfx, kps[MCP.ring],   kps[MCP.pinky],  kps[WRIST], valleyDepth, valleyWidth);
-
   // fingre
   const FINGERS = {
     thumb:  [1,2,3,4],
@@ -537,6 +510,7 @@ function drawHandMaskIfNear(gfx, hand, faceBounds, maxDistPx = 20) {
     pinky:  [17,18,19,20],
   };
 
+  const baseW = handBaseWidth(kps) * 1.5; // increased multiplier for wider fingers
   const midW  = baseW * 0.8;
   const tipW  = baseW * 0.64;
 
