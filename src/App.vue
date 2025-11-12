@@ -882,9 +882,19 @@ async function buildStickerPNG(p) {
   }
 
   for (const d of decos) {
-    const angle = Math.atan2(d.y, d.x);
-    const dx = d.x - centerX + size/2;
-    const dy = d.y - centerY + size/2;
+   // Brug samme rotationslogik som preview
+    let angle = 0;
+    const decoX = d.x;
+    const decoY = d.y;
+    if (decoX > VID_W/2 + 20) {
+      angle = Math.atan2(decoY, decoX);
+    } else if (decoX < VID_W/2 - 20) {
+      angle = Math.atan2(-decoY, decoX);
+    } else {
+      angle = 0;
+    }
+    const dx = decoX - centerX + size/2;
+    const dy = decoY - centerY + size/2;
 
     square.push();
     square.translate(dx, dy);
