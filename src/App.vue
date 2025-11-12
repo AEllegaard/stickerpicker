@@ -504,8 +504,18 @@ function drawHandMaskIfNear(gfx, hand, faceBounds, maxDistPx = 20) {
 
 
 
-  // tegn palme som fyldt polygon
-  drawFilledPoly(gfx, palm);
+
+  // tegn palme som fyldt polygon (lidt større)
+  const palmW = handBaseWidth(kps) * 1.0;
+  gfx.push();
+  gfx.stroke(255);
+  gfx.strokeWeight(palmW);
+  gfx.strokeCap(gfx.ROUND);
+  gfx.noFill();
+  gfx.beginShape();
+  for (const p of palm) gfx.vertex(p.x, p.y);
+  gfx.endShape(gfx.CLOSE);
+  gfx.pop();
 
   // fingre
   const FINGERS = {
@@ -516,7 +526,7 @@ function drawHandMaskIfNear(gfx, hand, faceBounds, maxDistPx = 20) {
     pinky:  [17,18,19,20],
   };
 
-  const baseW = handBaseWidth(kps) * 0.4; // fast, tynd fingerbredde
+  const baseW = handBaseWidth(kps) * 0.6; // lidt tykkere fingre
   const midW  = baseW * 0.8;
   const tipW  = baseW * 0.64;
 
