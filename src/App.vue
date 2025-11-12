@@ -498,36 +498,51 @@ function drawHandMaskIfNear(gfx, hand, faceBounds, maxDistPx = 20) {
 
   if (!isPolyNearRect(palm, faceBounds, maxDistPx)) return false;
 
-  // tegn palme
-  drawFilledPoly(gfx, palm);
 
-  // fingre
-  const FINGERS = {
-    thumb:  [1,2,3,4],
-    index:  [5,6,7,8],
-    middle: [9,10,11,12],
-    ring:   [13,14,15,16],
-    pinky:  [17,18,19,20],
-  };
 
-  const baseW = handBaseWidth(kps) * 0.65; // reduced width for thinner fingers
-  const midW  = baseW * 0.8;
-  const tipW  = baseW * 0.64;
 
-  for (const key of Object.keys(FINGERS)) {
-    const [a,b,c,d] = FINGERS[key].map(i => kps[i]);
-    if (tooFar(a,b) || tooFar(b,c) || tooFar(c,d)) continue;
 
-    drawThickSegment(gfx, a, b, baseW);
-    drawThickSegment(gfx, b, c, midW);
-    drawThickSegment(gfx, c, d, tipW);
 
-    // mindre bro ved MCP, så dalene ikke lukkes
-    drawJointDot(gfx, a, baseW * 0.85);
-    drawJointDot(gfx, b, midW);
-    drawJointDot(gfx, c, tipW);
-    drawJointDot(gfx, d, tipW);
-  }
+    // tegn palme med fuld bredde
+    const palmW = handBaseWidth(kps);
+    gfx.push();
+    gfx.stroke(255);
+    gfx.strokeWeight(palmW);
+    gfx.strokeCap(gfx.ROUND);
+    gfx.noFill();
+    // tegn omridset af palmen med bredde
+    gfx.beginShape();
+    for (const p of palm) gfx.vertex(p.x, p.y);
+    gfx.endShape(gfx.CLOSE);
+    gfx.pop();
+
+    // fingre
+    const FINGERS = {
+      thumb:  [1,2,3,4],
+      index:  [5,6,7,8],
+      middle: [9,10,11,12],
+      ring:   [13,14,15,16],
+      pinky:  [17,18,19,20],
+    };
+
+    const baseW = palmW * 0.4; // fingre er smallere end palmen
+    const midW  = baseW * 0.8;
+    const tipW  = baseW * 0.64;
+
+    for (const key of Object.keys(FINGERS)) {
+      const [a,b,c,d] = FINGERS[key].map(i => kps[i]);
+      if (tooFar(a,b) || tooFar(b,c) || tooFar(c,d)) continue;
+
+      drawThickSegment(gfx, a, b, baseW);
+      drawThickSegment(gfx, b, c, midW);
+      drawThickSegment(gfx, c, d, tipW);
+
+      // mindre bro ved MCP, så dalene ikke lukkes
+      drawJointDot(gfx, a, baseW * 0.85);
+      drawJointDot(gfx, b, midW);
+      drawJointDot(gfx, c, tipW);
+      drawJointDot(gfx, d, tipW);
+    }
 
   return true;
 }
