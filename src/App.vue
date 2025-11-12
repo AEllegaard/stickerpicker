@@ -503,18 +503,19 @@ function drawHandMaskIfNear(gfx, hand, faceBounds, maxDistPx = 20) {
 
 
 
-    // tegn palme med fuld bredde
-    const palmW = handBaseWidth(kps);
-    gfx.push();
-    gfx.stroke(255);
-    gfx.strokeWeight(palmW);
-    gfx.strokeCap(gfx.ROUND);
-    gfx.noFill();
-    // tegn omridset af palmen med bredde
-    gfx.beginShape();
-    for (const p of palm) gfx.vertex(p.x, p.y);
-    gfx.endShape(gfx.CLOSE);
-    gfx.pop();
+
+  // tegn palme med mindre bredde
+  const palmW = handBaseWidth(kps) * 0.7;
+  gfx.push();
+  gfx.stroke(255);
+  gfx.strokeWeight(palmW);
+  gfx.strokeCap(gfx.ROUND);
+  gfx.noFill();
+  // tegn omridset af palmen med bredde
+  gfx.beginShape();
+  for (const p of palm) gfx.vertex(p.x, p.y);
+  gfx.endShape(gfx.CLOSE);
+  gfx.pop();
 
     // fingre
     const FINGERS = {
@@ -525,8 +526,8 @@ function drawHandMaskIfNear(gfx, hand, faceBounds, maxDistPx = 20) {
       pinky:  [17,18,19,20],
     };
 
-    const baseW = palmW * 0.3; // fingre er smallere end palmen
-    const midW  = baseW * 0.7;
+    const baseW = palmW * 0.4; // fingre er smallere end palmen
+    const midW  = baseW * 0.8;
     const tipW  = baseW * 0.64;
 
     for (const key of Object.keys(FINGERS)) {
