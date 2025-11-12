@@ -29,7 +29,7 @@ const FACE_EXPAND = 1.3;
 const faceOutline = [10,338,297,332,284,251,389,356,447,366,401,288,397,365,379,378,400,377,152,148,176,149,150,136,172,58,132,93,234,127,162,103,67];
 
 // hånd konstanter
-const HAND_EXPAND = 1.15; // let opskalering af palmepolygon
+const HAND_EXPAND = 1.5; // let opskalering af palmepolygon
 
 // tegne-ressourcer
 let g = {
@@ -444,7 +444,7 @@ function handBaseWidth(kps) {
 }
 
 // tegn palmepolygon + capsule fingre, men kun hvis tæt på ansigtet
-function drawHandMaskIfNear(gfx, hand, faceBounds, maxDistPx = 20) {
+function drawHandMaskIfNear(gfx, hand, faceBounds, maxDistPx = 40) {
   const kps = (hand.keypoints || hand.landmarks || []).map(pt => ({ x: pt.x ?? pt[0], y: pt.y ?? pt[1] }));
   if (kps.length < 21) return false;
 
