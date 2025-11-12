@@ -29,7 +29,7 @@ const FACE_EXPAND = 1.3;
 const faceOutline = [10,338,297,332,284,251,389,356,447,366,401,288,397,365,379,378,400,377,152,148,176,149,150,136,172,58,132,93,234,127,162,103,67];
 
 // hånd konstanter
-const HAND_EXPAND = 1.8; // pust finger- og håndfladepolygoner en anelse
+const HAND_EXPAND = 1.15; // let opskalering af palmepolygon
 
 // tegne-ressourcer
 let g = {
@@ -72,7 +72,6 @@ class Deco {
   contains(mx, my) {
     return Math.abs(mx - this.x) <= this.w/2 && Math.abs(my - this.y) <= this.h/2;
   }
-  // drag handling
   startDrag(mx, my) {
     this.dragging = true;
     this._dx = mx - this.x;
@@ -116,7 +115,7 @@ const makeSketch = (p) => {
     p.angleMode(p.RADIANS);
     p.createCanvas(330, 390);
 
-    // opretter kamera og skjuler det 
+    // opretter kamera og skjuler det
     g.video = p.createCapture({ video: { facingMode: 'user', width: VID_W, height: VID_H }, audio: false });
     g.video.size(VID_W, VID_H);
     g.video.hide();
@@ -200,20 +199,12 @@ const makeSketch = (p) => {
       drawPolygon(g.maskG, fPts);
     }
 
-    // hænder: tegn som separate finger- og håndfladepolygoner hvis tæt nok på ansigtet  // NYT
+    // hænder: capsule fingre + palmepolygon, kun hvis tæt på ansigtet
     if (hands.length > 0 && faces.length > 0) {
       const fb = currentFaceBounds();
       for (const h of hands) {
-        const polys = handPolygonSet(h); // palm + fem fingre
-        if (!polys || polys.length === 0) continue;
-
-        // afstandsfilter mod ansigts-bbox  // NYT
-        const nearEnough = isHandNearFace(polys, fb, 20);
-        if (!nearEnough) continue;
-
-        anyMask = true;
-        for (const poly of polys) {
-          drawPolygon(g.maskG, poly);
+        if (drawHandMaskIfNear(g.maskG, h, fb, 20)) {
+          anyMask = true;
         }
       }
     }
@@ -225,7 +216,7 @@ const makeSketch = (p) => {
       g.maskedImg = masked;
       p.image(g.maskedImg, 0, 0, VID_W, VID_H);
 
-      // ÉN samlet kontur udledt af masken
+      // samlet kontur udledt af masken
       const outline = extractUnifiedOutlineFromMask(g.maskG, 128);
       if (outline && outline.length > 1) {
         drawPolyline(p, outline);
@@ -245,9 +236,7 @@ const makeSketch = (p) => {
       const pos = faceCenterOrFallback();
       const img = p.assets[hit.key];
 
-      // find ansigts bredden
       const fb = currentFaceBounds();
-
       let base = fb ? Math.max(fb.w, fb.h) * 1 : 100;
       base = Math.max(80, Math.min(base, 220));
 
@@ -398,7 +387,7 @@ function currentFaceBounds(){
     if (kp.y < minY) minY = kp.y;
     if (kp.y > maxY) maxY = kp.y;
   }
-  return { 
+  return {
     x: minX,
     y: minY,
     w: maxX - minX,
@@ -409,7 +398,6 @@ function currentFaceBounds(){
 }
 
 function faceExpandedOutlinePoints(face) {
-  // beregn centrum
   let cx = 0, cy = 0;
   for (let i = 0; i < faceOutline.length; i++) {
     const kp = face.keypoints[faceOutline[i]];
@@ -425,41 +413,96 @@ function faceExpandedOutlinePoints(face) {
   return pts;
 }
 
-// ========= HÆNDERS POLYGONER OG NÆRHEDS-TEST ========= // NYT
+// ========= HÆNDERS MASKETEGNING =========
 
-// opdel hånden i håndflade + fem fingre og returner polygoner pr. del  // NYT
-function handPolygonSet(hand) {
+// afrundede fingersegmenter
+function drawThickSegment(gfx, a, b, w) {
+  gfx.push();
+  gfx.stroke(255);
+  gfx.strokeWeight(w);
+  gfx.strokeCap(gfx.ROUND);
+  gfx.noFill();
+  gfx.line(a.x, a.y, b.x, b.y);
+  gfx.pop();
+}
+
+function drawJointDot(gfx, p, w) {
+  gfx.push();
+  gfx.noStroke();
+  gfx.fill(255);
+  gfx.circle(p.x, p.y, w);
+  gfx.pop();
+}
+
+function midPoint(a,b){ return { x:(a.x+b.x)/2, y:(a.y+b.y)/2 }; }
+function clamp(v, lo, hi){ return Math.max(lo, Math.min(hi, v)); }
+
+// robust mål for håndbredde ved knoerne
+function handBaseWidth(kps) {
+  const idx = kps[5], pinky = kps[17];
+  return Math.hypot(idx.x - pinky.x, idx.y - pinky.y);
+}
+
+// tegn palmepolygon + capsule fingre, men kun hvis tæt på ansigtet
+function drawHandMaskIfNear(gfx, hand, faceBounds, maxDistPx = 20) {
   const kps = (hand.keypoints || hand.landmarks || []).map(pt => ({ x: pt.x ?? pt[0], y: pt.y ?? pt[1] }));
-  if (kps.length < 21) return null;
+  if (kps.length < 21) return false;
 
-  // MediaPipe-indekser
   const WRIST = 0;
-  const THUMB = [1,2,3,4];
-  const INDEX = [5,6,7,8];
-  const MIDDLE = [9,10,11,12];
-  const RING = [13,14,15,16];
-  const PINKY = [17,18,19,20];
+  const MCPs = [5, 9, 13, 17].map(i => kps[i]); // index, middle, ring, pinky MCP
 
-  const palmSeeds = [WRIST, THUMB[0], INDEX[0], MIDDLE[0], RING[0], PINKY[0]].map(i => kps[i]);
-
-  // håndflade som konveks hylster af de seks basispunkter
+  // palmepolygon som hylster af wrist + MCP’er + to midtpunkter for fylde
+  let palmSeeds = [kps[WRIST], ...MCPs, midPoint(kps[WRIST], MCPs[0]), midPoint(kps[WRIST], MCPs[3])];
   let palm = convexHull(palmSeeds);
   palm = scalePolyFromCentroid(palm, HAND_EXPAND);
 
-  // hver finger som lille hylster af dens fire led
-  function fingerHull(indices){
-    const pts = indices.map(i => kps[i]);
-    let hull = convexHull(pts);
-    hull = scalePolyFromCentroid(hull, HAND_EXPAND);
-    return hull;
+  // nærhedstest mod ansigtets bbox
+  if (!isPolyNearRect(palm, faceBounds, maxDistPx)) return false;
+
+  // fyld palmen
+  gfx.push();
+  gfx.noStroke();
+  gfx.fill(255);
+  gfx.beginShape();
+  for (const p of palm) gfx.vertex(p.x, p.y);
+  gfx.endShape(gfx.CLOSE);
+  gfx.pop();
+
+  // fingre
+  const FINGERS = {
+    thumb: [1,2,3,4],
+    index: [5,6,7,8],
+    middle: [9,10,11,12],
+    ring: [13,14,15,16],
+    pinky: [17,18,19,20],
+  };
+
+  const baseW = clamp(handBaseWidth(kps) * 0.22, 8, 24);
+  const midW  = baseW * 0.8;
+  const tipW  = baseW * 0.6;
+
+  for (const key of Object.keys(FINGERS)) {
+    const [a,b,c,d] = FINGERS[key].map(i => kps[i]);
+    if (tooFar(a,b) || tooFar(b,c) || tooFar(c,d)) continue;
+
+    drawThickSegment(gfx, a, b, baseW);
+    drawThickSegment(gfx, b, c, midW);
+    drawThickSegment(gfx, c, d, tipW);
+
+    drawJointDot(gfx, a, baseW);
+    drawJointDot(gfx, b, midW);
+    drawJointDot(gfx, c, tipW);
+    drawJointDot(gfx, d, tipW);
   }
 
-  const polys = [palm, fingerHull(THUMB), fingerHull(INDEX), fingerHull(MIDDLE), fingerHull(RING), fingerHull(PINKY)];
-  // filtrer trivielle
-  return polys.filter(poly => poly && poly.length >= 3);
+  return true;
 }
 
-// skaler polygon omkring centroid  // NYT
+function tooFar(p,q){
+  const dist = Math.hypot(p.x - q.x, p.y - q.y);
+  return dist > 140;
+}
+
 function scalePolyFromCentroid(poly, s){
   if (!poly || poly.length === 0) return poly;
   let cx = 0, cy = 0;
@@ -468,149 +511,12 @@ function scalePolyFromCentroid(poly, s){
   return poly.map(p => ({ x: cx + (p.x - cx) * s, y: cy + (p.y - cy) * s }));
 }
 
-// test om mindst en del af hånden er inden for afstand d fra ansigts-bbox  // NYT
-function isHandNearFace(handPolys, faceBounds, d=20){
-  if (!faceBounds) return false;
-  const rect = { x: faceBounds.x, y: faceBounds.y, w: faceBounds.w, h: faceBounds.h };
-
-  for (const poly of handPolys) {
-    const dist = minDistancePolyToRect(poly, rect);
-    if (dist <= d) return true;
-  }
-  return false;
+function isPolyNearRect(poly, fb, d) {
+  const rect = { x: fb.x, y: fb.y, w: fb.w, h: fb.h };
+  return minDistancePolyToRect(poly, rect) <= d;
 }
 
-// mindste afstand mellem polygon og rektangel  // NYT
-function minDistancePolyToRect(poly, rect){
-  // hvis overlap, afstand 0
-  if (polyIntersectsRect(poly, rect)) return 0;
-
-  // ellers min afstand fra poly-segmenter til rektangel og vice versa
-  let best = Infinity;
-
-  // poly til rektangel
-  for (let i = 0; i < poly.length; i++){
-    const a = poly[i], b = poly[(i+1)%poly.length];
-    best = Math.min(best, segmentToRectDistance(a, b, rect));
-  }
-  // rektangel hjørner til polygon
-  const corners = [
-    {x: rect.x, y: rect.y},
-    {x: rect.x + rect.w, y: rect.y},
-    {x: rect.x + rect.w, y: rect.y + rect.h},
-    {x: rect.x, y: rect.y + rect.h},
-  ];
-  for (const c of corners){
-    best = Math.min(best, pointToPolyDistance(c, poly));
-  }
-  return best;
-}
-
-function polyIntersectsRect(poly, rect){
-  // hurtig bbox-test
-  let minX=Infinity, minY=Infinity, maxX=-Infinity, maxY=-Infinity;
-  for (const p of poly){ if (p.x<minX)minX=p.x; if(p.x>maxX)maxX=p.x; if(p.y<minY)minY=p.y; if(p.y>maxY)maxY=p.y; }
-  if (maxX < rect.x || minX > rect.x + rect.w || maxY < rect.y || minY > rect.y + rect.h) {
-    // muligvis udenfor, men kan stadig have nærhed
-  }
-  // enkel overlaptest via SAT mod rektakseler
-  // check om noget poly-punkt er inde i rektangel
-  for (const p of poly){
-    if (p.x >= rect.x && p.x <= rect.x + rect.w && p.y >= rect.y && p.y <= rect.y + rect.h) return true;
-  }
-  // check om et rektangel-hjørne er inde i poly
-  const corners = [
-    {x: rect.x, y: rect.y},
-    {x: rect.x + rect.w, y: rect.y},
-    {x: rect.x + rect.w, y: rect.y + rect.h},
-    {x: rect.x, y: rect.y + rect.h},
-  ];
-  for (const c of corners){
-    if (pointInPoly(c, poly)) return true;
-  }
-  // segment overlap
-  for (let i = 0; i < poly.length; i++){
-    const a = poly[i], b = poly[(i+1)%poly.length];
-    if (segmentIntersectsRect(a, b, rect)) return true;
-  }
-  return false;
-}
-
-function pointInPoly(pt, poly){
-  // ray casting
-  let inside = false;
-  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++){
-    const xi = poly[i].x, yi = poly[i].y, xj = poly[j].x, yj = poly[j].y;
-    const intersect = ((yi > pt.y) !== (yj > pt.y)) && (pt.x < (xj - xi) * (pt.y - yi) / ((yj - yi) || 1e-9) + xi);
-    if (intersect) inside = !inside;
-  }
-  return inside;
-}
-
-function segmentIntersectsRect(a, b, rect){
-  // Liang–Barsky kunne bruges, men vi tester mod fire kanter
-  const edges = [
-    [{x: rect.x, y: rect.y}, {x: rect.x + rect.w, y: rect.y}],
-    [{x: rect.x + rect.w, y: rect.y}, {x: rect.x + rect.w, y: rect.y + rect.h}],
-    [{x: rect.x + rect.w, y: rect.y + rect.h}, {x: rect.x, y: rect.y + rect.h}],
-    [{x: rect.x, y: rect.y + rect.h}, {x: rect.x, y: rect.y}],
-  ];
-  for (const [p1, p2] of edges){
-    if (segmentsIntersect(a, b, p1, p2)) return true;
-  }
-  return false;
-}
-
-function segmentsIntersect(p1, p2, p3, p4){
-  const d = (p4.y - p3.y)*(p2.x - p1.x) - (p4.x - p3.x)*(p2.y - p1.y);
-  if (Math.abs(d) < 1e-9) return false;
-  const ua = ((p4.x - p3.x)*(p1.y - p3.y) - (p4.y - p3.y)*(p1.x - p3.x)) / d;
-  const ub = ((p2.x - p1.x)*(p1.y - p3.y) - (p2.y - p1.y)*(p1.x - p3.x)) / d;
-  return ua >= 0 && ua <= 1 && ub >= 0 && ub <= 1;
-}
-
-function segmentToRectDistance(a, b, rect){
-  const edges = [
-    [{x: rect.x, y: rect.y}, {x: rect.x + rect.w, y: rect.y}],
-    [{x: rect.x + rect.w, y: rect.y}, {x: rect.x + rect.w, y: rect.y + rect.h}],
-    [{x: rect.x + rect.w, y: rect.y + rect.h}, {x: rect.x, y: rect.y + rect.h}],
-    [{x: rect.x, y: rect.y + rect.h}, {x: rect.x, y: rect.y}],
-  ];
-  let best = Infinity;
-  if (segmentIntersectsRect(a, b, rect)) return 0;
-  for (const [p1, p2] of edges){
-    best = Math.min(best, segmentToSegmentDistance(a, b, p1, p2));
-  }
-  return best;
-}
-
-function segmentToSegmentDistance(a, b, c, d){
-  if (segmentsIntersect(a,b,c,d)) return 0;
-  return Math.min(pointToSegmentDistance(a,c,d), pointToSegmentDistance(b,c,d), pointToSegmentDistance(c,a,b), pointToSegmentDistance(d,a,b));
-}
-
-function pointToSegmentDistance(p, a, b){
-  const vx = b.x - a.x, vy = b.y - a.y;
-  const wx = p.x - a.x, wy = p.y - a.y;
-  const c1 = vx*wx + vy*wy;
-  if (c1 <= 0) return Math.hypot(p.x - a.x, p.y - a.y);
-  const c2 = vx*vx + vy*vy;
-  if (c2 <= c1) return Math.hypot(p.x - b.x, p.y - b.y);
-  const t = c1 / c2;
-  const px = a.x + t*vx, py = a.y + t*vy;
-  return Math.hypot(p.x - px, p.y - py);
-}
-
-function pointToPolyDistance(p, poly){
-  let best = Infinity;
-  for (let i = 0; i < poly.length; i++){
-    const a = poly[i], b = poly[(i+1)%poly.length];
-    best = Math.min(best, pointToSegmentDistance(p, a, b));
-  }
-  return best;
-}
-
-// ========= GENEREL GEOMETRI ========= //
+// ========= GENEREL GEOMETRI =========
 
 function convexHull(points) {
   const pts = points.slice().sort((a,b)=> a.x===b.x ? a.y-b.y : a.x-b.x);
@@ -648,7 +554,6 @@ function drawPolyline(p, pts) {
   p.pop();
 }
 
-// ny hjælp: tegn fra punktliste i lokal buffer
 function drawPolylineLocalFromPts(square, pts) {
   square.push();
   square.noFill();
@@ -660,7 +565,7 @@ function drawPolylineLocalFromPts(square, pts) {
   square.pop();
 }
 
-// ÉN samlet kontur via boundary tracing (fra din tidligere version)
+// kontur via boundary tracing
 function extractUnifiedOutlineFromMask(maskG, threshold = 128) {
   const w = maskG.width, h = maskG.height;
   maskG.loadPixels();
@@ -671,7 +576,6 @@ function extractUnifiedOutlineFromMask(maskG, threshold = 128) {
     return pix[4*(y*w + x) + 3] || 0;
   };
 
-  // find startpixel i forgrund
   let sx = -1, sy = -1;
   for (let y = 0; y < h && sy === -1; y++) {
     for (let x = 0; x < w; x++) {
@@ -680,7 +584,6 @@ function extractUnifiedOutlineFromMask(maskG, threshold = 128) {
   }
   if (sy === -1) return [];
 
-  // Moore naboer
   const nbs = [
     {dx: 1, dy: 0}, {dx: 1, dy: 1}, {dx: 0, dy: 1}, {dx: -1, dy: 1},
     {dx: -1, dy: 0}, {dx: -1, dy: -1}, {dx: 0, dy: -1}, {dx: 1, dy: -1}
@@ -747,9 +650,122 @@ function perpDistance(p, a, b) {
   return Math.hypot(x - px, y - py);
 }
 
+// afstande mellem polygon og rektangel
+function minDistancePolyToRect(poly, rect){
+  if (polyIntersectsRect(poly, rect)) return 0;
+  let best = Infinity;
+
+  for (let i = 0; i < poly.length; i++){
+    const a = poly[i], b = poly[(i+1)%poly.length];
+    best = Math.min(best, segmentToRectDistance(a, b, rect));
+  }
+  const corners = [
+    {x: rect.x, y: rect.y},
+    {x: rect.x + rect.w, y: rect.y},
+    {x: rect.x + rect.w, y: rect.y + rect.h},
+    {x: rect.x, y: rect.y + rect.h},
+  ];
+  for (const c of corners){
+    best = Math.min(best, pointToPolyDistance(c, poly));
+  }
+  return best;
+}
+
+function polyIntersectsRect(poly, rect){
+  for (const p of poly){
+    if (p.x >= rect.x && p.x <= rect.x + rect.w && p.y >= rect.y && p.y <= rect.y + rect.h) return true;
+  }
+  const corners = [
+    {x: rect.x, y: rect.y},
+    {x: rect.x + rect.w, y: rect.y},
+    {x: rect.x + rect.w, y: rect.y + rect.h},
+    {x: rect.x, y: rect.y + rect.h},
+  ];
+  for (const c of corners){
+    if (pointInPoly(c, poly)) return true;
+  }
+  for (let i = 0; i < poly.length; i++){
+    const a = poly[i], b = poly[(i+1)%poly.length];
+    if (segmentIntersectsRect(a, b, rect)) return true;
+  }
+  return false;
+}
+
+function pointInPoly(pt, poly){
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++){
+    const xi = poly[i].x, yi = poly[i].y, xj = poly[j].x, yj = poly[j].y;
+    const intersect = ((yi > pt.y) !== (yj > pt.y)) && (pt.x < (xj - xi) * (pt.y - yi) / ((yj - yi) || 1e-9) + xi);
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
+function segmentIntersectsRect(a, b, rect){
+  const edges = [
+    [{x: rect.x, y: rect.y}, {x: rect.x + rect.w, y: rect.y}],
+    [{x: rect.x + rect.w, y: rect.y}, {x: rect.x + rect.w, y: rect.y + rect.h}],
+    [{x: rect.x + rect.w, y: rect.y + rect.h}, {x: rect.x, y: rect.y + rect.h}],
+    [{x: rect.x, y: rect.y + rect.h}, {x: rect.x, y: rect.y}],
+  ];
+  for (const [p1, p2] of edges){
+    if (segmentsIntersect(a, b, p1, p2)) return true;
+  }
+  return false;
+}
+
+function segmentsIntersect(p1, p2, p3, p4){
+  const d = (p4.y - p3.y)*(p2.x - p1.x) - (p4.x - p3.x)*(p2.y - p1.y);
+  if (Math.abs(d) < 1e-9) return false;
+  const ua = ((p4.x - p3.x)*(p1.y - p3.y) - (p4.y - p3.y)*(p1.x - p3.x)) / d;
+  const ub = ((p2.x - p1.x)*(p1.y - p3.y) - (p2.y - p1.y)*(p1.x - p3.x)) / d;
+  return ua >= 0 && ua <= 1 && ub >= 0 && ub <= 1;
+}
+
+function segmentToRectDistance(a, b, rect){
+  const edges = [
+    [{x: rect.x, y: rect.y}, {x: rect.x + rect.w, y: rect.y}],
+    [{x: rect.x + rect.w, y: rect.y}, {x: rect.x + rect.w, y: rect.y + rect.h}],
+    [{x: rect.x + rect.w, y: rect.y + rect.h}, {x: rect.x, y: rect.y + rect.h}],
+    [{x: rect.x, y: rect.y + rect.h}, {x: rect.x, y: rect.y}],
+  ];
+  let best = Infinity;
+  if (segmentIntersectsRect(a, b, rect)) return 0;
+  for (const [p1, p2] of edges){
+    best = Math.min(best, segmentToSegmentDistance(a, b, p1, p2));
+  }
+  return best;
+}
+
+function segmentToSegmentDistance(a, b, c, d){
+  if (segmentsIntersect(a,b,c,d)) return 0;
+  return Math.min(pointToSegmentDistance(a,c,d), pointToSegmentDistance(b,c,d), pointToSegmentDistance(c,a,b), pointToSegmentDistance(d,a,b));
+}
+
+function pointToSegmentDistance(p, a, b){
+  const vx = b.x - a.x, vy = b.y - a.y;
+  const wx = p.x - a.x, wy = p.y - a.y;
+  const c1 = vx*wx + vy*wy;
+  if (c1 <= 0) return Math.hypot(p.x - a.x, p.y - a.y);
+  const c2 = vx*vx + vy*vy;
+  if (c2 <= c1) return Math.hypot(p.x - b.x, p.y - b.y);
+  const t = c1 / c2;
+  const px = a.x + t*vx, py = a.y + t*vy;
+  return Math.hypot(p.x - px, p.y - py);
+}
+
+function pointToPolyDistance(p, poly){
+  let best = Infinity;
+  for (let i = 0; i < poly.length; i++){
+    const a = poly[i], b = poly[(i+1)%poly.length];
+    best = Math.min(best, pointToSegmentDistance(p, a, b));
+  }
+  return best;
+}
+
 // bygger PNG med samlet kontur
 async function buildStickerPNG(p) {
-  // brug samme logik som i draw: tegn masken på tmpMask  // NYT
+  // masken opbygges som i draw
   const tmpMask = p.createGraphics(VID_W, VID_H);
   tmpMask.clear();
   tmpMask.noStroke(); tmpMask.fill(255);
@@ -760,21 +776,16 @@ async function buildStickerPNG(p) {
   if (hands.length > 0 && faces.length > 0) {
     const fb = currentFaceBounds();
     for (const h of hands) {
-      const polys = handPolygonSet(h);
-      if (!polys || polys.length === 0) continue;
-      if (!isHandNearFace(polys, fb, 20)) continue;
-      for (const poly of polys) drawPolygon(tmpMask, poly);
+      drawHandMaskIfNear(tmpMask, h, fb, 20);
     }
   }
 
-  // lav udsnit og tegn i square
+  // lav bbox ud fra face + håndpunkter
   const shapePts = [];
   if (faces.length > 0) shapePts.push(...faceExpandedOutlinePoints(faces[0]));
-  // brug håndens polygoner til bbox-estimat
   for (const h of hands) {
-    const polys = handPolygonSet(h);
-    if (!polys) continue;
-    for (const poly of polys) shapePts.push(...poly);
+    const kps = (h.keypoints || h.landmarks || []).map(pt => ({ x: pt.x ?? pt[0], y: pt.y ?? pt[1] }));
+    shapePts.push(...kps);
   }
   if (shapePts.length < 3) return null;
 
@@ -802,7 +813,6 @@ async function buildStickerPNG(p) {
   videoCopy.mask(tmpMask.get());
   square.image(videoCopy, offsetX, offsetY);
 
-  // samlet kontur fra tmpMask
   const outline = extractUnifiedOutlineFromMask(tmpMask, 128);
   if (outline && outline.length > 1) {
     const localOutline = outline.map(v => ({
@@ -812,7 +822,6 @@ async function buildStickerPNG(p) {
     drawPolylineLocalFromPts(square, localOutline);
   }
 
-  // decos ovenpå
   for (const d of decos) {
     const angle = Math.atan2(d.y, d.x);
     const dx = d.x - centerX + size/2;
