@@ -30,9 +30,6 @@ let stopManualFaceDetect = null;
 const FACE_EXPAND = 1.3;
 const faceOutline = [10,338,297,332,284,251,389,356,447,366,401,288,397,365,379,378,400,377,152,148,176,149,150,136,172,58,132,93,234,127,162,103,67];
 
-// hånd konstanter
-// const HAND_EXPAND = 0.98; // endnu dybere dale
-
 // tegne-ressourcer
 let g = {
   video: null,
@@ -159,18 +156,6 @@ const makeSketch = (p) => {
         loading.value = false; // even fallback, hide loading
       }
 
-      // Hands via TFJS hand-pose-detection
-      /*
-      try {
-        handDetector = await handposeModel.createDetector(
-          handposeModel.SupportedModels.MediaPipeHands,
-          { runtime: 'tfjs', modelType: 'lite' }
-        );
-        startManualHandDetectLoop();
-      } catch (e) {
-        console.warn('Hand detector kunne ikke initialiseres', e);
-      }
-      */
     })().catch(console.error);
   };
 
@@ -204,18 +189,6 @@ const makeSketch = (p) => {
       const fPts = faceExpandedOutlinePoints(faces[0]);
       drawPolygon(g.maskG, fPts);
     }
-
-    // hænder: rund palme og capsule-fingre, kun hvis tæt på ansigtet
-    /*
-    if (hands.length > 0 && faces.length > 0) {
-      const fb = currentFaceBounds();
-      for (const h of hands) {
-        if (drawHandMaskIfNear(g.maskG, h, fb, 20)) {
-          anyMask = true;
-        }
-      }
-    }
-    */
 
     if (anyMask) {
       // anvend masken
@@ -369,20 +342,6 @@ function startManualFaceDetectLoop() {
   stopManualFaceDetect = () => { alive = false; };
 }
 
-// function startManualHandDetectLoop() {
-//   if (!handDetector) return;
-//   let alive = true;
-//   const step = async () => {
-//     if (!alive) return;
-//     try {
-//       const res = await handDetector.estimateHands(g.video.elt, { flipHorizontal: true });
-//       hands = res || [];
-//     } catch {}
-//     requestAnimationFrame(step);
-//   };
-//   step();
-//   stopManualHandDetect = () => { alive = false; };
-// }
 
 function currentFaceBounds(){
   if (faces.length === 0) return null;
@@ -470,130 +429,6 @@ function smoothPolyChaikin(pts, iters = 1) {
 
 function midPoint(a,b){ return { x:(a.x+b.x)/2, y:(a.y+b.y)/2 }; }
 function clamp(v, lo, hi){ return Math.max(lo, Math.min(hi, v)); }
-
-// robust mål for håndbredde ved knoerne
-//function handBaseWidth(kps) {
-  //const idx = kps[5], pinky = kps[17];
-  //return Math.hypot(idx.x - pinky.x, idx.y - pinky.y);
-//}
-
-// tegn rund palme + capsule fingre, kun hvis tæt på ansigtet
-//function drawHandMaskIfNear(gfx, hand, faceBounds, maxDistPx = 20) {
-  //const kps = (hand.keypoints || hand.landmarks || []).map(pt => ({ x: pt.x ?? pt[0], y: pt.y ?? pt[1] }));
-  //if (kps.length < 21) return false;
-//
-  //const WRIST = 0;
-  //const TH_CMC = 1;
-  //const MCP = { index: 5, middle: 9, ring: 13, pinky: 17 };
-//
-  //const seeds = [
-  //  kps[WRIST],
-  //  kps[TH_CMC],
-  //  kps[MCP.index],
-  //  midPoint(kps[MCP.index], kps[MCP.middle]),
-  //  kps[MCP.middle],
-  //  midPoint(kps[MCP.middle], kps[MCP.ring]),
-  //  kps[MCP.ring],
-  //  midPoint(kps[MCP.ring], kps[MCP.pinky]),
-  //  kps[MCP.pinky],
-  //  midPoint(kps[WRIST], kps[MCP.pinky]),
-  //  midPoint(kps[WRIST], kps[MCP.index]),
-  //];
-
-  //let palm = convexHull(seeds);
-  //palm = scalePolyFromCentroid(palm, HAND_EXPAND);
-  //palm = smoothPolyChaikin(palm, 1);
-//
-  //if (!isPolyNearRect(palm, faceBounds, maxDistPx)) return false;
-//wth
-
-
-
-
-
-
-
-  //// tegn palme som fyldt polygon (lidt større)
-  //const palmW = handBaseWidth(kps) * 1.0;
-  //gfx.push();
-  //gfx.stroke(255);
-  //gfx.strokeWeight(palmW * 0.7);
-  //gfx.strokeCap(gfx.ROUND);
-  //gfx.noFill();
-  //gfx.beginShape();
-  //for (const p of palm) gfx.vertex(p.x, p.y);
-  //gfx.endShape(gfx.CLOSE);
-  //gfx.pop();
-//
-  //// fingre
-  //const FINGERS = {
-  //  thumb:  [1,2,3,4],
-  //  index:  [5,6,7,8],
-  //  middle: [9,10,11,12],
-  //  ring:   [13,14,15,16],
-  //  pinky:  [17,18,19,20],
-  //};
-//
-  //const baseW = handBaseWidth(kps) * 0.6; // lidt tykkere fingre
-  //const midW  = baseW * 0.8;
-  //const tipW  = baseW * 0.64;
-//
-  //for (const key of Object.keys(FINGERS)) {
-  //  const [a,b,c,d] = FINGERS[key].map(i => kps[i]);
-  //  if (tooFar(a,b) || tooFar(b,c) || tooFar(c,d)) continue;
-//
-  //  drawThickSegment(gfx, a, b, baseW);
-  //  drawThickSegment(gfx, b, c, midW);
-  //  drawThickSegment(gfx, c, d, tipW);
-//
-  //  // mindre bro ved MCP, så dalene ikke lukkes
-  //  drawJointDot(gfx, a, baseW * 0.85);
-  //  drawJointDot(gfx, b, midW);
-  //  drawJointDot(gfx, c, tipW);
-  //  drawJointDot(gfx, d, tipW);
-  //}
-//
-  //return true;
-//
-//
-//function tooFar(p,q){
-//  const dist = Math.hypot(p.x - q.x, p.y - q.y);
-//  return dist > 140;
-//}
-
-//function scalePolyFromCentroid(poly, s){
-//  if (!poly || poly.length === 0) return poly;
-//  let cx = 0, cy = 0;
-//  for (const p of poly){ cx += p.x; cy += p.y; }
-//  cx /= poly.length; cy /= poly.length;
-//  return poly.map(p => ({ x: cx + (p.x - cx) * s, y: cy + (p.y - cy) * s }));
-//}
-//
-//function isPolyNearRect(poly, fb, d) {
-//  const rect = { x: fb.x, y: fb.y, w: fb.w, h: fb.h };
-//  return minDistancePolyToRect(poly, rect) <= d;
-//}
-
-// ========= GENEREL GEOMETRI =========
-
-//function convexHull(points) {
-//  const pts = points.slice().sort((a,b)=> a.x===b.x ? a.y-b.y : a.x-b.x);
-//  if (pts.length <= 1) return pts;
-//  const cross = (o,a,b)=> (a.x-o.x)*(b.y-o.y) - (a.y-o.y)*(b.x-o.x);
-//  const lower = [];
-//  for (const p of pts) {
-//    while (lower.length >= 2 && cross(lower[lower.length-2], lower[lower.length-1], p) <= 0) lower.pop();
-//    lower.push(p);
-//  }
-//  const upper = [];
-//  for (let i = pts.length-1; i>=0; i--) {
-//    const p = pts[i];
-//    while (upper.length >= 2 && cross(upper[upper.length-2], upper[upper.length-1], p) <= 0) upper.pop();
-//    upper.push(p);
-//  }
-//  upper.pop(); lower.pop();
-//  return lower.concat(upper);
-//}
 
 function drawPolygon(gfx, pts) {
   gfx.beginShape();
@@ -832,20 +667,10 @@ async function buildStickerPNG(p) {
   if (faces.length > 0) {
     drawPolygon(tmpMask, faceExpandedOutlinePoints(faces[0]));
   }
-  //if (hands.length > 0 && faces.length > 0) {
-  //  const fb = currentFaceBounds();
-  //  for (const h of hands) {
-  //    drawHandMaskIfNear(tmpMask, h, fb, 20);
-  //  }
-  //}
 
   // lav bbox ud fra face + håndpunkter
   const shapePts = [];
   if (faces.length > 0) shapePts.push(...faceExpandedOutlinePoints(faces[0]));
-  //for (const h of hands) {
-  //  const kps = (h.keypoints || h.landmarks || []).map(pt => ({ x: pt.x ?? pt[0], y: pt.y ?? pt[1] }));
-  //  shapePts.push(...kps);
-  //}
   if (shapePts.length < 3) return null;
 
   let minX = p.width, maxX = 0, minY = p.height, maxY = 0;
@@ -947,16 +772,6 @@ onMounted(async () => {
   const ml5Mod = await import('ml5');
   ml5 = ml5Mod.default || ml5Mod;
 
-  // TFJS + handpose model
-  //await import('@tensorflow/tfjs-backend-webgl');
-  //const handMod = await import('@tensorflow-models/hand-pose-detection');
-  //handposeModel = handMod;
-  //try { tf = ml5?.tf; } catch {}
-  //if (!tf) {
-  //  const tfcore = await import('@tensorflow/tfjs-core');
-  //  tf = tfcore;
-  //}
-
   inMiroRef.value = await probeMiro();
   buttonLabel.value = inMiroRef.value ? 'Paste sticker on the board' : 'Save sticker locally';
 
@@ -971,7 +786,6 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   try { faceMesh?.detectStop?.(); } catch {}
   try { stopManualFaceDetect?.(); } catch {}
-  //try { stopManualHandDetect?.(); } catch {}
   try { pInstance?.remove?.(); } catch {}
 });
 </script>
