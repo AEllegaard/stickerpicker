@@ -29,7 +29,7 @@ const FACE_EXPAND = 1.3;
 const faceOutline = [10,338,297,332,284,251,389,356,447,366,401,288,397,365,379,378,400,377,152,148,176,149,150,136,172,58,132,93,234,127,162,103,67];
 
 // hånd konstanter
-const HAND_EXPAND = 1.5; // let opskalering af palmepolygon
+const HAND_EXPAND = 1.25; // lidt mindre for rundere palme
 
 // tegne-ressourcer
 let g = {
@@ -189,7 +189,7 @@ const makeSketch = (p) => {
     // dekorationspanel
     drawPalette(p);
 
-    // byg maske: ansigt + hænder
+    // byg masken: ansigt + hænder
     let anyMask = false;
 
     // ansigt
@@ -199,7 +199,7 @@ const makeSketch = (p) => {
       drawPolygon(g.maskG, fPts);
     }
 
-    // hænder: capsule fingre + palmepolygon, kun hvis tæt på ansigtet
+    // hænder: rund palme og capsule-fingre, kun hvis tæt på ansigtet
     if (hands.length > 0 && faces.length > 0) {
       const fb = currentFaceBounds();
       for (const h of hands) {
@@ -434,6 +434,32 @@ function drawJointDot(gfx, p, w) {
   gfx.pop();
 }
 
+function drawFilledPoly(gfx, pts) {
+  gfx.push();
+  gfx.noStroke();
+  gfx.fill(255);
+  gfx.beginShape();
+  for (const p of pts) gfx.vertex(p.x, p.y);
+  gfx.endShape(gfx.CLOSE);
+  gfx.pop();
+}
+
+// Chaikin smoothing til blødere palmekanter
+function smoothPolyChaikin(pts, iters = 2) {
+  let poly = pts.slice();
+  for (let t = 0; t < iters; t++) {
+    const out = [];
+    for (let i = 0; i < poly.length; i++) {
+      const a = poly[i];
+      const b = poly[(i + 1) % poly.length];
+      out.push({ x: 0.75 * a.x + 0.25 * b.x, y: 0.75 * a.y + 0.25 * b.y });
+      out.push({ x: 0.25 * a.x + 0.75 * b.x, y: 0.25 * a.y + 0.75 * b.y });
+    }
+    poly = out;
+  }
+  return poly;
+}
+
 function midPoint(a,b){ return { x:(a.x+b.x)/2, y:(a.y+b.y)/2 }; }
 function clamp(v, lo, hi){ return Math.max(lo, Math.min(hi, v)); }
 
@@ -443,53 +469,58 @@ function handBaseWidth(kps) {
   return Math.hypot(idx.x - pinky.x, idx.y - pinky.y);
 }
 
-// tegn palmepolygon + capsule fingre, men kun hvis tæt på ansigtet
-function drawHandMaskIfNear(gfx, hand, faceBounds, maxDistPx = 40) {
+// tegn rund palme + capsule fingre, kun hvis tæt på ansigtet
+function drawHandMaskIfNear(gfx, hand, faceBounds, maxDistPx = 20) {
   const kps = (hand.keypoints || hand.landmarks || []).map(pt => ({ x: pt.x ?? pt[0], y: pt.y ?? pt[1] }));
   if (kps.length < 21) return false;
 
   const WRIST = 0;
-  const MCPs = [5, 9, 13, 17].map(i => kps[i]); // index, middle, ring, pinky MCP
+  const TH_CMC = 1;
+  const MCP = { index: 5, middle: 9, ring: 13, pinky: 17 };
 
-  // palmepolygon som hylster af wrist + MCP’er + to midtpunkter for fylde
-  let palmSeeds = [kps[WRIST], ...MCPs, midPoint(kps[WRIST], MCPs[0]), midPoint(kps[WRIST], MCPs[3])];
-  let palm = convexHull(palmSeeds);
+  const seeds = [
+    kps[WRIST],
+    kps[TH_CMC],
+    kps[MCP.index],
+    midPoint(kps[MCP.index], kps[MCP.middle]),
+    kps[MCP.middle],
+    midPoint(kps[MCP.middle], kps[MCP.ring]),
+    kps[MCP.ring],
+    midPoint(kps[MCP.ring], kps[MCP.pinky]),
+    kps[MCP.pinky],
+    midPoint(kps[WRIST], kps[MCP.pinky]),
+    midPoint(kps[WRIST], kps[MCP.index]),
+  ];
+
+  let palm = convexHull(seeds);
   palm = scalePolyFromCentroid(palm, HAND_EXPAND);
+  palm = smoothPolyChaikin(palm, 2);
 
-  // nærhedstest mod ansigtets bbox
   if (!isPolyNearRect(palm, faceBounds, maxDistPx)) return false;
 
-  // fyld palmen
-  gfx.push();
-  gfx.noStroke();
-  gfx.fill(255);
-  gfx.beginShape();
-  for (const p of palm) gfx.vertex(p.x, p.y);
-  gfx.endShape(gfx.CLOSE);
-  gfx.pop();
+  drawFilledPoly(gfx, palm);
 
-  // fingre
   const FINGERS = {
-    thumb: [1,2,3,4],
-    index: [5,6,7,8],
+    thumb:  [1,2,3,4],
+    index:  [5,6,7,8],
     middle: [9,10,11,12],
-    ring: [13,14,15,16],
-    pinky: [17,18,19,20],
+    ring:   [13,14,15,16],
+    pinky:  [17,18,19,20],
   };
 
-  const baseW = clamp(handBaseWidth(kps) * 0.22, 8, 24);
-  const midW  = baseW * 0.8;
-  const tipW  = baseW * 0.6;
+  const baseWidth = clamp(handBaseWidth(kps) * 0.24, 10, 26);
+  const midW  = baseWidth * 0.82;
+  const tipW  = baseWidth * 0.64;
 
   for (const key of Object.keys(FINGERS)) {
     const [a,b,c,d] = FINGERS[key].map(i => kps[i]);
     if (tooFar(a,b) || tooFar(b,c) || tooFar(c,d)) continue;
 
-    drawThickSegment(gfx, a, b, baseW);
+    drawThickSegment(gfx, a, b, baseWidth);
     drawThickSegment(gfx, b, c, midW);
     drawThickSegment(gfx, c, d, tipW);
 
-    drawJointDot(gfx, a, baseW);
+    drawJointDot(gfx, a, baseWidth * 1.1); // lille bro ved MCP
     drawJointDot(gfx, b, midW);
     drawJointDot(gfx, c, tipW);
     drawJointDot(gfx, d, tipW);
