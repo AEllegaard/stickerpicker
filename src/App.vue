@@ -525,8 +525,8 @@ function drawHandMaskIfNear(gfx, hand, faceBounds, maxDistPx = 20) {
       pinky:  [17,18,19,20],
     };
 
-    const baseW = palmW * 0.4; // fingre er smallere end palmen
-    const midW  = baseW * 0.8;
+    const baseW = palmW * 0.3; // fingre er smallere end palmen
+    const midW  = baseW * 0.7;
     const tipW  = baseW * 0.64;
 
     for (const key of Object.keys(FINGERS)) {
