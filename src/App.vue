@@ -510,7 +510,7 @@ function drawHandMaskIfNear(gfx, hand, faceBounds, maxDistPx = 20) {
     pinky:  [17,18,19,20],
   };
 
-  const baseW = handBaseWidth(kps) * 1.5; // increased multiplier for wider fingers
+  const baseW = handBaseWidth(kps) * 1.1; // increased multiplier for wider fingers
   const midW  = baseW * 0.8;
   const tipW  = baseW * 0.64;
 
