@@ -13,23 +13,23 @@ const buttonLabel = ref('Save sticker locally');
 
 // handles
 let P5, ml5, pInstance = null, faceMesh = null;
-let handposeModel = null, tf = null, handDetector = null;
+// let handposeModel = null, tf = null, handDetector = null;
 let faces = [];
-let hands = [];
+// let hands = [];
 
 // deco-objekter på lærredet
 let decos = [];
 
 // fallback loop stopper
 let stopManualFaceDetect = null;
-let stopManualHandDetect = null;
+// let stopManualHandDetect = null;
 
 // face konstanter
 const FACE_EXPAND = 1.3;
 const faceOutline = [10,338,297,332,284,251,389,356,447,366,401,288,397,365,379,378,400,377,152,148,176,149,150,136,172,58,132,93,234,127,162,103,67];
 
 // hånd konstanter
-const HAND_EXPAND = 0.98; // endnu dybere dale
+// const HAND_EXPAND = 0.98; // endnu dybere dale
 
 // tegne-ressourcer
 let g = {
@@ -156,6 +156,7 @@ const makeSketch = (p) => {
       }
 
       // Hands via TFJS hand-pose-detection
+      /*
       try {
         handDetector = await handposeModel.createDetector(
           handposeModel.SupportedModels.MediaPipeHands,
@@ -165,6 +166,7 @@ const makeSketch = (p) => {
       } catch (e) {
         console.warn('Hand detector kunne ikke initialiseres', e);
       }
+      */
     })().catch(console.error);
   };
 
@@ -200,6 +202,7 @@ const makeSketch = (p) => {
     }
 
     // hænder: rund palme og capsule-fingre, kun hvis tæt på ansigtet
+    /*
     if (hands.length > 0 && faces.length > 0) {
       const fb = currentFaceBounds();
       for (const h of hands) {
@@ -208,6 +211,7 @@ const makeSketch = (p) => {
         }
       }
     }
+    */
 
     if (anyMask) {
       // anvend masken
@@ -361,20 +365,20 @@ function startManualFaceDetectLoop() {
   stopManualFaceDetect = () => { alive = false; };
 }
 
-function startManualHandDetectLoop() {
-  if (!handDetector) return;
-  let alive = true;
-  const step = async () => {
-    if (!alive) return;
-    try {
-      const res = await handDetector.estimateHands(g.video.elt, { flipHorizontal: true });
-      hands = res || [];
-    } catch {}
-    requestAnimationFrame(step);
-  };
-  step();
-  stopManualHandDetect = () => { alive = false; };
-}
+// function startManualHandDetectLoop() {
+//   if (!handDetector) return;
+//   let alive = true;
+//   const step = async () => {
+//     if (!alive) return;
+//     try {
+//       const res = await handDetector.estimateHands(g.video.elt, { flipHorizontal: true });
+//       hands = res || [];
+//     } catch {}
+//     requestAnimationFrame(step);
+//   };
+//   step();
+//   stopManualHandDetect = () => { alive = false; };
+// }
 
 function currentFaceBounds(){
   if (faces.length === 0) return null;
