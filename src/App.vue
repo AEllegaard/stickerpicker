@@ -865,6 +865,11 @@ async function buildStickerPNG(p) {
   square.pixelDensity(1);
   square.clear();
 
+  // Flip horizontally for correct export orientation
+  square.push();
+  square.translate(size, 0);
+  square.scale(-1, 1);
+
   const offsetX = size / 2 - centerX;
   const offsetY = size / 2 - centerY;
 
@@ -893,6 +898,7 @@ async function buildStickerPNG(p) {
     square.image(d.img, 0, 0, d.w, d.h);
     square.pop();
   }
+  square.pop();
 
   const dataUrl = square.canvas.toDataURL('image/png');
   return dataUrl;
