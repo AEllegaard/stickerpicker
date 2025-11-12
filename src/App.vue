@@ -497,7 +497,7 @@ function drawHandMaskIfNear(gfx, hand, faceBounds, maxDistPx = 20) {
   palm = smoothPolyChaikin(palm, 1);
 
   if (!isPolyNearRect(palm, faceBounds, maxDistPx)) return false;
-
+//wth
 
 
 
