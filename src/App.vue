@@ -794,7 +794,10 @@ onBeforeUnmount(() => {
   <div id="root">
     <div v-if="loading" class="loading-overlay">
       <div class="spinner"></div>
-      <div style="margin-top:16px; font-size:18px; color:#444;">Loading face mesh…</div>
+      <div style="margin-top:16px; font-size:18px; color:#444;">
+        Loading face mesh… <br>
+        <span style="font-size:12px">(Remember to allow camera access)</span>
+      </div>
     </div>
     <div class="grid wrapper">
       <div class="canvas cs1 ce12">
