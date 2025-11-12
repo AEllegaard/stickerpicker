@@ -29,7 +29,7 @@ const FACE_EXPAND = 1.3;
 const faceOutline = [10,338,297,332,284,251,389,356,447,366,401,288,397,365,379,378,400,377,152,148,176,149,150,136,172,58,132,93,234,127,162,103,67];
 
 // hånd konstanter
-const HAND_EXPAND = 1.25; // lidt mindre for rundere palme
+const HAND_EXPAND = 1.1; // mindre, så dalene mellem fingre bevares
 
 // tegne-ressourcer
 let g = {
@@ -444,8 +444,8 @@ function drawFilledPoly(gfx, pts) {
   gfx.pop();
 }
 
-// Chaikin smoothing til blødere palmekanter
-function smoothPolyChaikin(pts, iters = 2) {
+// Chaikin smoothing til blødere palmekanter (mild)
+function smoothPolyChaikin(pts, iters = 1) {
   let poly = pts.slice();
   for (let t = 0; t < iters; t++) {
     const out = [];
@@ -467,6 +467,25 @@ function clamp(v, lo, hi){ return Math.max(lo, Math.min(hi, v)); }
 function handBaseWidth(kps) {
   const idx = kps[5], pinky = kps[17];
   return Math.hypot(idx.x - pinky.x, idx.y - pinky.y);
+}
+
+// skær små V-hak mellem fingre (så “prikkerne” læses tydeligt)
+function carveValley(gfx, pA, pB, toward, depth, width) {
+  const m = midPoint(pA, pB);
+  const vx = toward.x - m.x, vy = toward.y - m.y;
+  const len = Math.hypot(vx, vy) || 1;
+  const nx = (vx / len) * depth, ny = (vy / len) * depth;       // spids ind mod håndled
+  const px = -ny, py = nx;                                       // normal til begge sider
+  const wx = (px / Math.hypot(px, py)) * width;
+  const wy = (py / Math.hypot(px, py)) * width;
+
+  gfx.erase();
+  gfx.beginShape();
+  gfx.vertex(m.x + wx, m.y + wy);
+  gfx.vertex(m.x - wx, m.y - wy);
+  gfx.vertex(m.x + nx, m.y + ny);
+  gfx.endShape(gfx.CLOSE);
+  gfx.noErase();
 }
 
 // tegn rund palme + capsule fingre, kun hvis tæt på ansigtet
@@ -494,12 +513,22 @@ function drawHandMaskIfNear(gfx, hand, faceBounds, maxDistPx = 20) {
 
   let palm = convexHull(seeds);
   palm = scalePolyFromCentroid(palm, HAND_EXPAND);
-  palm = smoothPolyChaikin(palm, 2);
+  palm = smoothPolyChaikin(palm, 1);
 
   if (!isPolyNearRect(palm, faceBounds, maxDistPx)) return false;
 
+  // tegn palme
   drawFilledPoly(gfx, palm);
 
+  // skær tydelige dale mellem fingre
+  const baseW = clamp(handBaseWidth(kps) * 0.24, 10, 26);
+  const valleyDepth = baseW * 1.2;
+  const valleyWidth  = baseW * 0.55;
+  carveValley(gfx, kps[MCP.index],  kps[MCP.middle], kps[WRIST], valleyDepth, valleyWidth);
+  carveValley(gfx, kps[MCP.middle], kps[MCP.ring],   kps[WRIST], valleyDepth, valleyWidth);
+  carveValley(gfx, kps[MCP.ring],   kps[MCP.pinky],  kps[WRIST], valleyDepth, valleyWidth);
+
+  // fingre
   const FINGERS = {
     thumb:  [1,2,3,4],
     index:  [5,6,7,8],
@@ -508,19 +537,19 @@ function drawHandMaskIfNear(gfx, hand, faceBounds, maxDistPx = 20) {
     pinky:  [17,18,19,20],
   };
 
-  const baseWidth = clamp(handBaseWidth(kps) * 0.24, 10, 26);
-  const midW  = baseWidth * 0.82;
-  const tipW  = baseWidth * 0.64;
+  const midW  = baseW * 0.8;
+  const tipW  = baseW * 0.64;
 
   for (const key of Object.keys(FINGERS)) {
     const [a,b,c,d] = FINGERS[key].map(i => kps[i]);
     if (tooFar(a,b) || tooFar(b,c) || tooFar(c,d)) continue;
 
-    drawThickSegment(gfx, a, b, baseWidth);
+    drawThickSegment(gfx, a, b, baseW);
     drawThickSegment(gfx, b, c, midW);
     drawThickSegment(gfx, c, d, tipW);
 
-    drawJointDot(gfx, a, baseWidth * 1.1); // lille bro ved MCP
+    // mindre bro ved MCP, så dalene ikke lukkes
+    drawJointDot(gfx, a, baseW * 0.85);
     drawJointDot(gfx, b, midW);
     drawJointDot(gfx, c, tipW);
     drawJointDot(gfx, d, tipW);
@@ -650,7 +679,8 @@ function extractUnifiedOutlineFromMask(maskG, threshold = 128) {
     if (bx === sx && by === sy && cx === sx - 1 && cy === sy) break;
   }
 
-  return simplifyRDP(outline, 0.8);
+  // mindre epsilon så finger-takker bevares
+  return simplifyRDP(outline, 0.35);
 }
 
 function simplifyRDP(points, epsilon) {
