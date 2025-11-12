@@ -29,7 +29,7 @@ const FACE_EXPAND = 1.3;
 const faceOutline = [10,338,297,332,284,251,389,356,447,366,401,288,397,365,379,378,400,377,152,148,176,149,150,136,172,58,132,93,234,127,162,103,67];
 
 // hånd konstanter (brug alle punkter + konveks hylster)
-const HAND_EXPAND = 1; // let op pustning af hylster
+const HAND_EXPAND = 1.15; // let op pustning af hylster
 
 // tegne-ressourcer
 let g = {
