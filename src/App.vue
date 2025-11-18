@@ -348,7 +348,8 @@ const makeSketch = (p) => {
       let base = fb ? Math.max(fb.w, fb.h) * 1 : 100;
       base = Math.max(80, Math.min(base, 220));
 
-      decos.push(new Deco(p, img, pos.x, pos.y, base, base));
+        // Default farve: første farve i COLORS
+        decos.push(new Deco(p, img, pos.x, pos.y, base, base, COLORS[0]));
       return;
     }
     // grib eksisterende deco (øverst først)
