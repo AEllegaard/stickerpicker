@@ -798,12 +798,12 @@ async function buildStickerPNG(p) {
   }
   const faceW = maxX - minX;
   const faceH = maxY - minY;
-  const size = (Math.max(faceW, faceH) * 2) | 0;
+  const size = (Math.max(faceW, faceH) * 2.5) | 0; // increased for higher quality
   const centerX = (minX + maxX) / 2;
   const centerY = (minY + maxY) / 2;
 
   const square = p.createGraphics(size, size);
-  square.pixelDensity(1);
+  square.pixelDensity(2); // 2x resolution for better quality
   square.clear();
 
   const offsetX = size / 2 - centerX;
