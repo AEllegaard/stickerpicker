@@ -567,7 +567,7 @@ function drawPolylineLocalFromPts(square, pts) {
   square.push();
   square.noFill();
   square.stroke(255);
-  square.strokeWeight(3); // thinner stroke for smoother outline
+  square.strokeWeight(6); // thinner stroke for smoother outline
   square.strokeJoin(square.ROUND);
   square.strokeCap(square.ROUND);
   square.beginShape();
