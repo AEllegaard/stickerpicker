@@ -12,7 +12,7 @@ import CowboyhatSrc from './assets/svg/Cowboyhat.svg';
 import LadyhatSrc from './assets/svg/Ladyhat.svg';
 import PartyhatoneSrc from './assets/svg/Partyhatone.svg';
 import PartyhattwoSrc from './assets/svg/Partyhattwo.svg';
-import PartyhatthreeSrc from './assets/svg/Partyhatthree.svg';
+import PartyhatthreeSrc from './assets/svg/PartyhatThree.svg';
 import PropelSrc from './assets/svg/Propel.svg';
 import TallhatSrc from './assets/svg/Tallhat.svg';
 
