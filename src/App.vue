@@ -801,7 +801,9 @@ async function buildStickerPNG(p) {
   
   const faceW = maxX - minX;
   const faceH = maxY - minY;
-  const size = (Math.max(faceW, faceH) * 2.5) | 0; // increased for higher quality
+  const padding = Math.max(faceW, faceH) * 0.1; // 10% padding around face
+  const sizeNoScale = Math.max(faceW, faceH) + padding * 2;
+  const size = (sizeNoScale * 2.5) | 0; // scale up for 2x pixelDensity quality
   const centerX = (minX + maxX) / 2;
   const centerY = (minY + maxY) / 2;
 
@@ -816,6 +818,17 @@ async function buildStickerPNG(p) {
   videoCopy.mask(tmpMask.get());
   square.image(videoCopy, offsetX, offsetY);
 
+  // Draw unified outline around face first (on top of face, below decos)
+  const outline = extractUnifiedOutlineFromMask(tmpMask, 128);
+  if (outline && outline.length > 1) {
+    const localOutline = outline.map(v => ({
+      x: v.x - centerX + size/2,
+      y: v.y - centerY + size/2
+    }));
+    drawPolylineLocalFromPts(square, localOutline);
+  }
+
+  // Draw decos on top of outline
   for (const d of decos) {
    // Brug samme rotationslogik som preview
     let angle = 0;
@@ -837,16 +850,6 @@ async function buildStickerPNG(p) {
     square.imageMode(square.CENTER);
     square.image(d.img, 0, 0, d.w, d.h);
     square.pop();
-  }
-
-  // Draw unified outline around face and decos
-  const outline = extractUnifiedOutlineFromMask(tmpMask, 128);
-  if (outline && outline.length > 1) {
-    const localOutline = outline.map(v => ({
-      x: v.x - centerX + size/2,
-      y: v.y - centerY + size/2
-    }));
-    drawPolylineLocalFromPts(square, localOutline);
   }
 
   const dataUrl = square.canvas.toDataURL('image/png');
