@@ -3,7 +3,7 @@ import { onMounted, onBeforeUnmount, ref } from 'vue';
 import './assets/style.css';
 
 // import deco-ressourcer
-//hats måske
+//hats
 import BeanieSrc from './assets/png/Beanie.png';
 import BeretSrc from './assets/png/Beret.png';
 import BuckethatSrc from './assets/png/Buckethat.png';
@@ -18,8 +18,8 @@ import TallhatSrc from './assets/png/Tallhat.png';
 
 //Glasses
 import CatsunniesSrc from './assets/png/Catsunnies.png';
-import FlowersunniesSrc from './assets/png/Flowersunnies.png';
-import HeartsunniesSrc from './assets/png/Heartsunnies.png';
+import FlowersunniesSrc from './assets/png/flowersunnies.png';
+import HeartsunniesSrc from './assets/png/HeartSunnies.png';
 import PixelsunniesSrc from './assets/png/Pixelsunnies.png';
 import SquaresunniesSrc from './assets/png/Squaresunnies.png';
 import StarSunniesSrc from './assets/png/Starsunnies.png';
