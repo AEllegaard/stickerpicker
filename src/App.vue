@@ -777,7 +777,7 @@ function pointToPolyDistance(p, poly){
 
 // bygger PNG med samlet kontur
 async function buildStickerPNG(p) {
-  // masken opbygges som i draw
+  // masken opbygges som i draw - BARE ansigt, ikke decos
   const tmpMask = p.createGraphics(VID_W, VID_H);
   tmpMask.clear();
   tmpMask.noStroke(); tmpMask.fill(255);
@@ -786,17 +786,7 @@ async function buildStickerPNG(p) {
     drawPolygon(tmpMask, faceExpandedOutlinePoints(faces[0]));
   }
 
-  // Add decos to mask so outline includes them
-  for (const d of decos) {
-    tmpMask.push();
-    tmpMask.translate(d.x, d.y);
-    tmpMask.rotate(d.angleToOrigin());
-    tmpMask.imageMode(tmpMask.CENTER);
-    tmpMask.image(d.img, 0, 0, d.w, d.h);
-    tmpMask.pop();
-  }
-
-  // lav bbox ud fra face + håndpunkter
+  // lav bbox ud fra face kun
   const shapePts = [];
   if (faces.length > 0) shapePts.push(...faceExpandedOutlinePoints(faces[0]));
   if (shapePts.length < 3) return null;
@@ -807,16 +797,6 @@ async function buildStickerPNG(p) {
     if (pt.x > maxX) maxX = pt.x;
     if (pt.y < minY) minY = pt.y;
     if (pt.y > maxY) maxY = pt.y;
-  }
-  
-  // Also include decos in bbox
-  for (const d of decos) {
-    const x1 = d.x - d.w/2, x2 = d.x + d.w/2;
-    const y1 = d.y - d.h/2, y2 = d.y + d.h/2;
-    if (x1 < minX) minX = x1;
-    if (x2 > maxX) maxX = x2;
-    if (y1 < minY) minY = y1;
-    if (y2 > maxY) maxY = y2;
   }
   
   const faceW = maxX - minX;
