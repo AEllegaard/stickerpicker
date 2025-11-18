@@ -809,21 +809,6 @@ async function buildStickerPNG(p) {
   const offsetX = size / 2 - centerX;
   const offsetY = size / 2 - centerY;
 
-  // Draw drop shadow first
-  const shadowOffset = 8;
-  const shadowBlur = 12;
-  const videoCopyShadow = g.pg.get();
-  videoCopyShadow.mask(tmpMask.get());
-  
-  // Create shadow effect by drawing multiple semi-transparent copies
-  for (let i = 0; i < shadowBlur; i++) {
-    const alpha = Math.max(0, 20 - i * 2);
-    videoCopyShadow.globalAlpha = alpha / 255;
-    square.image(videoCopyShadow, offsetX + shadowOffset + i/3, offsetY + shadowOffset + i/3);
-  }
-  square.globalAlpha = 1.0;
-
-  // Draw main image
   const videoCopy = g.pg.get();
   videoCopy.mask(tmpMask.get());
   square.image(videoCopy, offsetX, offsetY);
