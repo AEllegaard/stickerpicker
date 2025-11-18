@@ -814,21 +814,31 @@ async function buildStickerPNG(p) {
   const offsetX = size / 2 - centerX;
   const offsetY = size / 2 - centerY;
 
+  // Draw white background shape (expanded face outline) under everything
+  const facePts = faceExpandedOutlinePoints(faces[0]);
+  const expandScale = 1.15; // forstørrelse af outline
+  const faceCenterX = (minX + maxX) / 2;
+  const faceCenterY = (minY + maxY) / 2;
+  
+  square.fill(255); // hvid
+  square.noStroke();
+  square.beginShape();
+  for (const pt of facePts) {
+    const expanded = {
+      x: faceCenterX + (pt.x - faceCenterX) * expandScale,
+      y: faceCenterY + (pt.y - faceCenterY) * expandScale
+    };
+    const localX = expanded.x - centerX + size/2;
+    const localY = expanded.y - centerY + size/2;
+    square.vertex(localX, localY);
+  }
+  square.endShape(square.CLOSE);
+
   const videoCopy = g.pg.get();
   videoCopy.mask(tmpMask.get());
   square.image(videoCopy, offsetX, offsetY);
 
-  // Draw unified outline around face first (on top of face, below decos)
-  const outline = extractUnifiedOutlineFromMask(tmpMask, 128);
-  if (outline && outline.length > 1) {
-    const localOutline = outline.map(v => ({
-      x: v.x - centerX + size/2,
-      y: v.y - centerY + size/2
-    }));
-    drawPolylineLocalFromPts(square, localOutline);
-  }
-
-  // Draw decos on top of outline
+  // Draw decos on top
   for (const d of decos) {
    // Brug samme rotationslogik som preview
     let angle = 0;
