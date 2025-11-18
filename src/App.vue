@@ -629,7 +629,7 @@ function extractUnifiedOutlineFromMask(maskG, threshold = 128) {
   }
 
   // mindre epsilon så outline bliver glattere
-  return simplifyRDP(outline, 0.15);
+  return simplifyRDP(outline, 0.05);
 }
 
 function simplifyRDP(points, epsilon) {
