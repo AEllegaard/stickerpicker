@@ -4,36 +4,36 @@ import './assets/style.css';
 
 // import deco-ressourcer
 //hats
-import BeanieSrc from '/public/png/Beanie.png';
-import BeretSrc from '/public/png/Beret.png';
-import BuckethatSrc from '/public/png/Buckethat.png';
-import CapSrc from '/public/png/Cap.png';
-import CowboyhatSrc from '/public/png/Cowboyhat.png';
-import LadyhatSrc from '/public/png/Ladyhat.png';
-import PartyhatoneSrc from '/public/png/Partyhatone.png';
-import PartyhattwoSrc from '/public/png/Partyhattwo.png';
-import PartyhatthreeSrc from '/public/png/Partyhatthree.png';
-import PropelSrc from '/public/png/Propel.png';
-import TallhatSrc from '/public/png/Tallhat.png';
+import BeanieSrc from './assets/png/Beanie.png';
+import BeretSrc from './assets/png/Beret.png';
+import BuckethatSrc from './assets/png/Buckethat.png';
+import CapSrc from './assets/png/Cap.png';
+import CowboyhatSrc from './assets/png/Cowboyhat.png';
+import LadyhatSrc from './assets/png/Ladyhat.png';
+import PartyhatoneSrc from './assets/png/Partyhatone.png';
+import PartyhattwoSrc from './assets/png/Partyhattwo.png';
+import PartyhatthreeSrc from './assets/png/Partyhatthree.png';
+import PropelSrc from './assets/png/Propel.png';
+import TallhatSrc from './assets/png/Tallhat.png';
 
 //Glasses
-import CatsunniesSrc from '/public/png/Catsunnies.png';
-import FlowersunniesSrc from '/public/png/Flowersunnies.png';
-import HeartsunniesSrc from '/public/png/Heartsunnies.png';
-import PixelsunniesSrc from '/public/png/Pixelsunnies.png';
-import SquaresunniesSrc from '/public/png/Squaresunnies.png';
-import StarSunniesSrc from '/public/png/Starsunnies.png';
+import CatsunniesSrc from './assets/png/Catsunnies.png';
+import FlowersunniesSrc from './assets/png/Flowersunnies.png';
+import HeartsunniesSrc from './assets/png/Heartsunnies.png';
+import PixelsunniesSrc from './assets/png/Pixelsunnies.png';
+import SquaresunniesSrc from './assets/png/Squaresunnies.png';
+import StarSunniesSrc from './assets/png/Starsunnies.png';
 
 //Mouths
-import BiglipsSrc from '/public/png/Biglips.png';
-import BluetoungeoutSrc from '/public/png/Bluetoungeout.png';
-import GreenmouthSrc from '/public/png/Greenmouth.png';
-import HappylaydSrc from '/public/png/Happylady.png';
-import NoteethSrc from '/public/png/Noteeth.png';
-import OpensmileSrc from '/public/png/Opensmile.png';
-import PinkmouthSrc from '/public/png/Pinkmouth.png';
-import PinktoungeoutSrc from '/public/png/Pinktoungeout.png';
-import UnderbiteSrc from '/public/png/Underbite.png';
+import BiglipsSrc from './assets/png/Biglips.png';
+import BluetoungeoutSrc from './assets/png/Bluetoungeout.png';
+import GreenmouthSrc from './assets/png/Greenmouth.png';
+import HappylaydSrc from './assets/png/Happylady.png';
+import NoteethSrc from './assets/png/Noteeth.png';
+import OpensmileSrc from './assets/png/Opensmile.png';
+import PinkmouthSrc from './assets/png/Pinkmouth.png';
+import PinktoungeoutSrc from './assets/png/Pinktoungeout.png';
+import UnderbiteSrc from './assets/png/Underbite.png';
 
 
 const canvasHost = ref(null);
