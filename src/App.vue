@@ -628,8 +628,8 @@ function extractUnifiedOutlineFromMask(maskG, threshold = 128) {
     if (bx === sx && by === sy && cx === sx - 1 && cy === sy) break;
   }
 
-  // mindre epsilon så finger-takker bevares
-  return simplifyRDP(outline, 0.35);
+  // mindre epsilon så outline bliver glattere
+  return simplifyRDP(outline, 0.15);
 }
 
 function simplifyRDP(points, epsilon) {
