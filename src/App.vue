@@ -816,7 +816,7 @@ async function buildStickerPNG(p) {
 
   // Draw white background shape (expanded face outline) first - under everything
   const facePts = faceExpandedOutlinePoints(faces[0]);
-  const expandScale = 1.2; // forstørrelse af rammen
+  const expandScale = 1.15; // forstørrelse af rammen
   const faceCenterX = (minX + maxX) / 2;
   const faceCenterY = (minY + maxY) / 2;
   
