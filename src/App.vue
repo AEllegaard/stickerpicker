@@ -814,26 +814,6 @@ async function buildStickerPNG(p) {
   const offsetX = size / 2 - centerX;
   const offsetY = size / 2 - centerY;
 
-  // Draw white background shape (expanded face outline) under everything
-  const facePts = faceExpandedOutlinePoints(faces[0]);
-  const expandScale = 1.15; // forstørrelse af outline
-  const faceCenterX = (minX + maxX) / 2;
-  const faceCenterY = (minY + maxY) / 2;
-  
-  square.fill(255); // hvid
-  square.noStroke();
-  square.beginShape();
-  for (const pt of facePts) {
-    const expanded = {
-      x: faceCenterX + (pt.x - faceCenterX) * expandScale,
-      y: faceCenterY + (pt.y - faceCenterY) * expandScale
-    };
-    const localX = expanded.x - centerX + size/2;
-    const localY = expanded.y - centerY + size/2;
-    square.vertex(localX, localY);
-  }
-  square.endShape(square.CLOSE);
-
   const videoCopy = g.pg.get();
   videoCopy.mask(tmpMask.get());
   square.image(videoCopy, offsetX, offsetY);
@@ -861,6 +841,27 @@ async function buildStickerPNG(p) {
     square.image(d.img, 0, 0, d.w, d.h);
     square.pop();
   }
+
+  // Draw white background shape (expanded face outline) on top as frame
+  const facePts = faceExpandedOutlinePoints(faces[0]);
+  const expandScale = 1.2; // forstørrelse af rammen
+  const faceCenterX = (minX + maxX) / 2;
+  const faceCenterY = (minY + maxY) / 2;
+  
+  square.fill(255); // hvid
+  square.stroke(255);
+  square.strokeWeight(1);
+  square.beginShape();
+  for (const pt of facePts) {
+    const expanded = {
+      x: faceCenterX + (pt.x - faceCenterX) * expandScale,
+      y: faceCenterY + (pt.y - faceCenterY) * expandScale
+    };
+    const localX = expanded.x - centerX + size/2;
+    const localY = expanded.y - centerY + size/2;
+    square.vertex(localX, localY);
+  }
+  square.endShape(square.CLOSE);
 
   const dataUrl = square.canvas.toDataURL('image/png');
   return dataUrl;
