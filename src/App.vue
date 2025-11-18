@@ -82,18 +82,17 @@ let selectedCategory = 'hats'; // state for selected category
 
 // farver til randomizer
 const COLORS = [
-  '#0052CC', // blue
-  '#66CCFF', // light blue
-  '#8B1538', // maroon
-  '#FF7700', // orange
-  '#FFB3D9', // pink
-  '#FFD9B3', // peach
-  '#FFC700', // gold
-  '#FFFF00', // yellow
-  '#9B6B38', // brown
-  '#C9D9A3', // sage
-  '#1B6B2E', // dark green
-  '#00E64D'  // bright green
+  '#0b60e1', // blue
+  '#6dcbff', // light blue
+  '#a41932', // maroon
+  '#fe5600', // orange
+  '#fe5600', // pink
+  '#fe5600', // peach
+  '#ffaf21', // gold
+  '#feee17', // yellow
+  '#d6cb8f', // sage
+  '#00602a', // dark green
+  '#00602a'  // bright green
 ];
 
 // palette-ikoner (nede i panelet)
