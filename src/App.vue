@@ -71,39 +71,48 @@ let g = {
 
 const VID_W = 330, VID_H = 240;
 
+// kategorier og deres assets
+const categories = [
+  { id: 'hats', label: 'Hats' },
+  { id: 'glasses', label: 'Glasses' },
+  { id: 'mouths', label: 'Mouths' }
+];
+
+let selectedCategory = 'hats'; // state for selected category
+
 // palette-ikoner (nede i panelet)
 const palette = [
   //hats
-  { key: 'Beanie', src: BeanieSrc, x: 55, y: 320, w: 60, h: 60 },
-  { key: 'Beret', src: BeretSrc, x: 115, y: 320, w: 60, h: 60 },
-  { key: 'Buckethat', src: BuckethatSrc, x: 175, y: 320, w: 60, h: 60 },
-  { key: 'Cap', src: CapSrc, x: 235, y: 320, w: 60, h: 60 },
-  { key: 'Cowboyhat', src: CowboyhatSrc, x: 295, y: 320, w: 60, h: 60 },
-  { key: 'Ladyhat', src: LadyhatSrc, x: 55, y: 380, w: 60, h: 60 },
-  { key: 'Partyhatone', src: PartyhatoneSrc, x: 115, y: 380, w: 60, h: 60 },
-  { key: 'Partyhattwo', src: PartyhattwoSrc, x: 175, y: 380, w: 60, h: 60 },
-  { key: 'Partyhatthree', src: PartyhatthreeSrc, x: 235, y: 380, w: 60, h: 60 },
-  { key: 'Propel', src: PropelSrc, x: 295, y: 380, w: 60, h: 60 },
-  { key: 'Tallhat', src: TallhatSrc, x: 55, y: 440, w: 60, h: 60 },
+  { category: 'hats', key: 'Beanie', src: BeanieSrc, x: 55, y: 320, w: 60, h: 60 },
+  { category: 'hats', key: 'Beret', src: BeretSrc, x: 115, y: 320, w: 60, h: 60 },
+  { category: 'hats', key: 'Buckethat', src: BuckethatSrc, x: 175, y: 320, w: 60, h: 60 },
+  { category: 'hats', key: 'Cap', src: CapSrc, x: 235, y: 320, w: 60, h: 60 },
+  { category: 'hats', key: 'Cowboyhat', src: CowboyhatSrc, x: 295, y: 320, w: 60, h: 60 },
+  { category: 'hats', key: 'Ladyhat', src: LadyhatSrc, x: 55, y: 380, w: 60, h: 60 },
+  { category: 'hats', key: 'Partyhatone', src: PartyhatoneSrc, x: 115, y: 380, w: 60, h: 60 },
+  { category: 'hats', key: 'Partyhattwo', src: PartyhattwoSrc, x: 175, y: 380, w: 60, h: 60 },
+  { category: 'hats', key: 'Partyhatthree', src: PartyhatthreeSrc, x: 235, y: 380, w: 60, h: 60 },
+  { category: 'hats', key: 'Propel', src: PropelSrc, x: 295, y: 380, w: 60, h: 60 },
+  { category: 'hats', key: 'Tallhat', src: TallhatSrc, x: 55, y: 440, w: 60, h: 60 },
 
   //Glasses
-  { key: 'Catsunnies', src: CatsunniesSrc, x: 115, y: 440, w: 60, h: 60 },
-  { key: 'Flowersunnies', src: FlowersunniesSrc, x: 175, y: 440, w: 60, h: 60 },
-  { key: 'Heartsunnies', src: HeartsunniesSrc, x: 235, y: 440, w: 60, h: 60 },
-  { key: 'Pixelsunnies', src: PixelsunniesSrc, x: 295, y: 440, w: 60, h: 60 },
-  { key: 'Squaresunnies', src: SquaresunniesSrc, x: 55, y: 500, w: 60, h: 60 },
-  { key: 'Starsunnies', src: StarSunniesSrc, x: 115, y: 500, w: 60, h: 60 },
+  { category: 'glasses', key: 'Catsunnies', src: CatsunniesSrc, x: 115, y: 320, w: 60, h: 60 },
+  { category: 'glasses', key: 'Flowersunnies', src: FlowersunniesSrc, x: 175, y: 320, w: 60, h: 60 },
+  { category: 'glasses', key: 'Heartsunnies', src: HeartsunniesSrc, x: 235, y: 320, w: 60, h: 60 },
+  { category: 'glasses', key: 'Pixelsunnies', src: PixelsunniesSrc, x: 295, y: 320, w: 60, h: 60 },
+  { category: 'glasses', key: 'Squaresunnies', src: SquaresunniesSrc, x: 55, y: 380, w: 60, h: 60 },
+  { category: 'glasses', key: 'Starsunnies', src: StarSunniesSrc, x: 115, y: 380, w: 60, h: 60 },
 
   //Mouths
-  { key: 'Biglips', src: BiglipsSrc, x: 175, y: 500, w: 60, h: 60 },
-  { key: 'Bluetoungeout', src: BluetoungeoutSrc, x: 235, y: 500, w: 60, h: 60 },
-  { key: 'Greenmouth', src: GreenmouthSrc, x: 295, y: 500, w: 60, h: 60 },
-  { key: 'Happylady', src: HappylaydSrc, x: 55, y: 560, w: 60, h: 60 },
-  { key: 'Noteeth', src: NoteethSrc, x: 115, y: 560, w: 60, h: 60 },
-  { key: 'Opensmile', src: OpensmileSrc, x: 175, y: 560, w: 60, h: 60 },
-  { key: 'Pinkmouth', src: PinkmouthSrc, x: 235, y: 560, w: 60, h: 60 },
-  { key: 'Pinktoungeout', src: PinktoungeoutSrc, x: 295, y: 560, w: 60, h: 60 },
-  { key: 'Underbite', src: UnderbiteSrc, x: 55, y: 620, w: 60, h: 60 }
+  { category: 'mouths', key: 'Biglips', src: BiglipsSrc, x: 175, y: 380, w: 60, h: 60 },
+  { category: 'mouths', key: 'Bluetoungeout', src: BluetoungeoutSrc, x: 235, y: 380, w: 60, h: 60 },
+  { category: 'mouths', key: 'Greenmouth', src: GreenmouthSrc, x: 295, y: 380, w: 60, h: 60 },
+  { category: 'mouths', key: 'Happylady', src: HappylaydSrc, x: 55, y: 440, w: 60, h: 60 },
+  { category: 'mouths', key: 'Noteeth', src: NoteethSrc, x: 115, y: 440, w: 60, h: 60 },
+  { category: 'mouths', key: 'Opensmile', src: OpensmileSrc, x: 175, y: 440, w: 60, h: 60 },
+  { category: 'mouths', key: 'Pinkmouth', src: PinkmouthSrc, x: 235, y: 440, w: 60, h: 60 },
+  { category: 'mouths', key: 'Pinktoungeout', src: PinktoungeoutSrc, x: 295, y: 440, w: 60, h: 60 },
+  { category: 'mouths', key: 'Underbite', src: UnderbiteSrc, x: 55, y: 500, w: 60, h: 60 }
 ];
 
 // robust Miro-detektion
@@ -175,7 +184,7 @@ const makeSketch = (p) => {
   p.setup = () => {
     p.pixelDensity(1);
     p.angleMode(p.RADIANS);
-    p.createCanvas(330, 680);
+    p.createCanvas(330, 490);
 
     // opretter kamera og skjuler det
     g.video = p.createCapture({ video: { facingMode: 'user', width: VID_W, height: VID_H }, audio: false });
@@ -275,6 +284,13 @@ const makeSketch = (p) => {
 
   // klik i paletten: opret nyt deco
   p.mousePressed = () => {
+    // Check if clicking on category button
+    const catClick = getCategoryButtonAt(p.mouseX, p.mouseY);
+    if (catClick) {
+      selectedCategory = catClick;
+      return;
+    }
+    
     const hit = hitPalette(p.mouseX, p.mouseY);
     if (hit) {
       const pos = faceCenterOrFallback();
@@ -316,33 +332,37 @@ const makeSketch = (p) => {
   function drawPalette(p) {
     p.noStroke();
     p.fill(205);
-    p.rect(0, 250, 330, 430);
+    p.rect(0, 250, 330, 240);
 
-    p.fill(30);
-    p.textSize(14);
-    p.textStyle(p.BOLD);
-    p.text('Hats', 10, 270);
-    p.textStyle(p.NORMAL);
-    p.textSize(12);
+    // Draw category buttons at top
+    const btnWidth = 100;
+    const btnHeight = 30;
+    const btnY = 260;
+    
+    for (let i = 0; i < categories.length; i++) {
+      const cat = categories[i];
+      const btnX = 15 + i * 110;
+      const isSelected = cat.id === selectedCategory;
+      
+      p.noStroke();
+      p.fill(isSelected ? 100 : 170);
+      p.rect(btnX, btnY, btnWidth, btnHeight, 5);
+      
+      p.fill(255);
+      p.textSize(12);
+      p.textStyle(p.BOLD);
+      p.textAlign(p.CENTER, p.CENTER);
+      p.text(cat.label, btnX + btnWidth/2, btnY + btnHeight/2);
+      p.textAlign(p.LEFT);
+    }
 
-    let hatCount = 0;
-    let glassesStart = -1;
-    let mouthsStart = -1;
-
-    // Draw all items
-    for (let i = 0; i < palette.length; i++) {
-      const item = palette[i];
+    // Draw assets for selected category
+    const filteredItems = palette.filter(item => item.category === selectedCategory);
+    
+    for (const item of filteredItems) {
       const img = p.assets[item.key];
       if (!img) continue;
-
-      // Track category transitions
-      if (item.key === 'Catsunnies' && glassesStart === -1) {
-        glassesStart = item.y;
-      }
-      if (item.key === 'Biglips' && mouthsStart === -1) {
-        mouthsStart = item.y;
-      }
-
+      
       p.push();
       p.imageMode(p.CENTER);
       p.image(img, item.x, item.y, item.w, item.h);
@@ -353,21 +373,25 @@ const makeSketch = (p) => {
         p.rect(item.x - item.w/2 - 4, item.y - item.h/2 - 4, item.w + 8, item.h + 8);
       }
     }
-
-    // Draw category labels
-    p.fill(30);
-    p.textSize(14);
-    p.textStyle(p.BOLD);
-    if (glassesStart !== -1) {
-      p.text('Glasses', 10, glassesStart - 10);
+  }
+  
+  function getCategoryButtonAt(mx, my) {
+    const btnWidth = 100;
+    const btnHeight = 30;
+    const btnY = 260;
+    
+    for (let i = 0; i < categories.length; i++) {
+      const btnX = 15 + i * 110;
+      if (mx >= btnX && mx <= btnX + btnWidth && my >= btnY && my <= btnY + btnHeight) {
+        return categories[i].id;
+      }
     }
-    if (mouthsStart !== -1) {
-      p.text('Mouths', 10, mouthsStart - 10);
-    }
+    return null;
   }
 
   function hitPalette(mx, my) {
     for (const item of palette) {
+      if (item.category !== selectedCategory) continue;
       const dx = mx - item.x, dy = my - item.y;
       if (dx*dx + dy*dy <= (Math.max(item.w, item.h)/2)**2) return item;
     }
