@@ -348,8 +348,10 @@ const makeSketch = (p) => {
       let base = fb ? Math.max(fb.w, fb.h) * 1 : 100;
       base = Math.max(80, Math.min(base, 220));
 
-        // Default farve: første farve i COLORS
-        decos.push(new Deco(p, img, pos.x, pos.y, base, base, COLORS[0]));
+        // Default farve: vælg farve baseret på asset index i palette
+        const paletteIdx = palette.findIndex(item => item.key === hit.key);
+        const colorIdx = paletteIdx % COLORS.length;
+        decos.push(new Deco(p, img, pos.x, pos.y, base, base, COLORS[colorIdx]));
       return;
     }
     // grib eksisterende deco (øverst først)
