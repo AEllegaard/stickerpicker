@@ -80,6 +80,22 @@ const categories = [
 
 let selectedCategory = 'hats'; // state for selected category
 
+// farver til randomizer
+const COLORS = [
+  '#0052CC', // blue
+  '#66CCFF', // light blue
+  '#8B1538', // maroon
+  '#FF7700', // orange
+  '#FFB3D9', // pink
+  '#FFD9B3', // peach
+  '#FFC700', // gold
+  '#FFFF00', // yellow
+  '#9B6B38', // brown
+  '#C9D9A3', // sage
+  '#1B6B2E', // dark green
+  '#00E64D'  // bright green
+];
+
 // palette-ikoner (nede i panelet)
 const palette = [
   //hats
@@ -130,13 +146,14 @@ async function probeMiro() {
 
 // simpelt deco-objekt
 class Deco {
-  constructor(p, img, x, y, w, h) {
+  constructor(p, img, x, y, w, h, color = null) {
     this.p = p;
     this.img = img;
     this.x = x; this.y = y;
     this.w = w; this.h = h;
     this.dragging = false;
     this._dx = 0; this._dy = 0;
+    this.color = color || COLORS[Math.floor(Math.random() * COLORS.length)];
   }
   contains(mx, my) {
     return Math.abs(mx - this.x) <= this.w/2 && Math.abs(my - this.y) <= this.h/2;
@@ -167,7 +184,9 @@ class Deco {
     p.translate(this.x, this.y);
     p.rotate(this.angleToOrigin());
     p.imageMode(p.CENTER);
+    p.tint(this.color);
     p.image(this.img, 0, 0, this.w, this.h);
+    p.noTint();
     p.pop();
   }
 }
@@ -284,6 +303,12 @@ const makeSketch = (p) => {
 
   // klik i paletten: opret nyt deco
   p.mousePressed = () => {
+    // Check for randomize button
+    if (isClickingRandomizeButton(p.mouseX, p.mouseY)) {
+      randomizeDecoColors();
+      return;
+    }
+    
     // Check if clicking on category button
     const catClick = getCategoryButtonAt(p.mouseX, p.mouseY);
     if (catClick) {
@@ -333,6 +358,26 @@ const makeSketch = (p) => {
     p.noStroke();
     p.fill(205);
     p.rect(0, 250, 330, 240);
+
+    // Draw randomize button at top right
+    const randomBtnX = 240;
+    const randomBtnY = 260;
+    const randomBtnW = 75;
+    const randomBtnH = 30;
+    
+    const isHoveringRandomize = p.mouseX >= randomBtnX && p.mouseX <= randomBtnX + randomBtnW &&
+                                p.mouseY >= randomBtnY && p.mouseY <= randomBtnY + randomBtnH;
+    
+    p.noStroke();
+    p.fill(isHoveringRandomize ? 150 : 120);
+    p.rect(randomBtnX, randomBtnY, randomBtnW, randomBtnH, 5);
+    
+    p.fill(255);
+    p.textSize(11);
+    p.textStyle(p.BOLD);
+    p.textAlign(p.CENTER, p.CENTER);
+    p.text('🎨', randomBtnX + randomBtnW/2, randomBtnY + randomBtnH/2);
+    p.textAlign(p.LEFT);
 
     // Draw category buttons at top
     const btnWidth = 100;
@@ -387,6 +432,20 @@ const makeSketch = (p) => {
       }
     }
     return null;
+  }
+
+  function isClickingRandomizeButton(mx, my) {
+    const randomBtnX = 240;
+    const randomBtnY = 260;
+    const randomBtnW = 75;
+    const randomBtnH = 30;
+    return mx >= randomBtnX && mx <= randomBtnX + randomBtnW && my >= randomBtnY && my <= randomBtnY + randomBtnH;
+  }
+
+  function randomizeDecoColors() {
+    for (const deco of decos) {
+      deco.color = COLORS[Math.floor(Math.random() * COLORS.length)];
+    }
   }
 
   function hitPalette(mx, my) {
