@@ -130,6 +130,30 @@ const palette = [
   { category: 'mouths', key: 'Underbite', src: UnderbiteSrc, x: 55, y: 500, w: 60, h: 60 }
 ];
 
+// hjælpefunktion til at konvertere hex-farve til HSL og returnere CSS filter
+function getColorFilterFromHex(hex) {
+  const r = parseInt(hex.substr(1, 2), 16) / 255;
+  const g = parseInt(hex.substr(3, 2), 16) / 255;
+  const b = parseInt(hex.substr(5, 2), 16) / 255;
+  
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  let h = 0, s = 0, l = (max + min) / 2;
+  
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+      case g: h = (b - r) / d + 2; break;
+      case b: h = (r - g) / d + 4; break;
+    }
+    h /= 6;
+  }
+  
+  const hue = Math.round(h * 360);
+  return `hue-rotate(${hue}deg) saturate(1.5)`;
+}
+
 // robust Miro-detektion
 async function probeMiro() {
   try {
@@ -183,9 +207,9 @@ class Deco {
     p.translate(this.x, this.y);
     p.rotate(this.angleToOrigin());
     p.imageMode(p.CENTER);
-    p.tint(this.color);
+    p.drawingContext.filter = getColorFilterFromHex(this.color);
     p.image(this.img, 0, 0, this.w, this.h);
-    p.noTint();
+    p.drawingContext.filter = 'none';
     p.pop();
   }
 }
@@ -914,7 +938,13 @@ async function buildStickerPNG(p) {
     square.translate(dx, dy);
     square.rotate(angle);
     square.imageMode(square.CENTER);
+    
+    // Apply color filter
+    const colorFilter = getColorFilterFromHex(d.color);
+    square.drawingContext.filter = colorFilter;
     square.image(d.img, 0, 0, d.w, d.h);
+    square.drawingContext.filter = 'none';
+    
     square.pop();
   }
 
