@@ -360,33 +360,31 @@ const makeSketch = (p) => {
     p.rect(0, 250, 330, 240);
 
     // Draw randomize button at top right
-    const randomBtnX = 240;
+    const randomBtnX = 265;
     const randomBtnY = 260;
-    const randomBtnW = 75;
+    const randomBtnW = 50;
     const randomBtnH = 30;
     
     const isHoveringRandomize = p.mouseX >= randomBtnX && p.mouseX <= randomBtnX + randomBtnW &&
                                 p.mouseY >= randomBtnY && p.mouseY <= randomBtnY + randomBtnH;
     
     p.noStroke();
-    p.fill(isHoveringRandomize ? 150 : 120);
+    p.fill(isHoveringRandomize ? 80 : 100);
     p.rect(randomBtnX, randomBtnY, randomBtnW, randomBtnH, 5);
     
     p.fill(255);
-    p.textSize(11);
-    p.textStyle(p.BOLD);
+    p.textSize(14);
     p.textAlign(p.CENTER, p.CENTER);
     p.text('🎨', randomBtnX + randomBtnW/2, randomBtnY + randomBtnH/2);
-    p.textAlign(p.LEFT);
 
     // Draw category buttons at top
-    const btnWidth = 100;
+    const btnWidth = 85;
     const btnHeight = 30;
     const btnY = 260;
     
     for (let i = 0; i < categories.length; i++) {
       const cat = categories[i];
-      const btnX = 15 + i * 110;
+      const btnX = 10 + i * 90;
       const isSelected = cat.id === selectedCategory;
       
       p.noStroke();
@@ -394,12 +392,12 @@ const makeSketch = (p) => {
       p.rect(btnX, btnY, btnWidth, btnHeight, 5);
       
       p.fill(255);
-      p.textSize(12);
+      p.textSize(11);
       p.textStyle(p.BOLD);
       p.textAlign(p.CENTER, p.CENTER);
       p.text(cat.label, btnX + btnWidth/2, btnY + btnHeight/2);
-      p.textAlign(p.LEFT);
     }
+    p.textAlign(p.LEFT);
 
     // Draw assets for selected category
     const filteredItems = palette.filter(item => item.category === selectedCategory);
@@ -421,12 +419,12 @@ const makeSketch = (p) => {
   }
   
   function getCategoryButtonAt(mx, my) {
-    const btnWidth = 100;
+    const btnWidth = 85;
     const btnHeight = 30;
     const btnY = 260;
     
     for (let i = 0; i < categories.length; i++) {
-      const btnX = 15 + i * 110;
+      const btnX = 10 + i * 90;
       if (mx >= btnX && mx <= btnX + btnWidth && my >= btnY && my <= btnY + btnHeight) {
         return categories[i].id;
       }
@@ -435,9 +433,9 @@ const makeSketch = (p) => {
   }
 
   function isClickingRandomizeButton(mx, my) {
-    const randomBtnX = 240;
+    const randomBtnX = 265;
     const randomBtnY = 260;
-    const randomBtnW = 75;
+    const randomBtnW = 50;
     const randomBtnH = 30;
     return mx >= randomBtnX && mx <= randomBtnX + randomBtnW && my >= randomBtnY && my <= randomBtnY + randomBtnH;
   }
