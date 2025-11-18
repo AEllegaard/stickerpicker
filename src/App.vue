@@ -3,7 +3,38 @@ import { onMounted, onBeforeUnmount, ref } from 'vue';
 import './assets/style.css';
 
 // import deco-ressourcer
-import hatSrc from './assets/hat.webp';
+//hats
+import BeanieSrc from '/png/Beanie.png';
+import BeretSrc from '/png/Beret.png';
+import BuckethatSrc from '/png/Buckethat.png';
+import CapSrc from '/png/Cap.png';
+import CowboyhatSrc from '/png/Cowboyhat.png';
+import LadyhatSrc from '/png/Ladyhat.png';
+import PartyhatoneSrc from '/png/Partyhatone.png';
+import PartyhattwoSrc from '/png/Partyhattwo.png';
+import PartyhatthreeSrc from '/png/Partyhatthree.png';
+import PropelSrc from '/png/Propel.png';
+import TallhatSrc from '/png/Tallhat.png';
+
+//Glasses
+import CatsunniesSrc from '/png/Catsunnies.png';
+import FlowersunniesSrc from '/png/Flowersunnies.png';
+import HeartsunniesSrc from '/png/Heartsunnies.png';
+import PixelsunniesSrc from '/png/Pixelsunnies.png';
+import SquaresunniesSrc from '/png/Squaresunnies.png';
+import StarSunniesSrc from '/png/Starsunnies.png';
+
+//Mouths
+import BiglipsSrc from '/png/Biglips.png';
+import BluetoungeoutSrc from '/png/Bluetoungeout.png';
+import GreenmouthSrc from '/png/Greenmouth.png';
+import HappylaydSrc from '/png/Happylady.png';
+import NoteethSrc from '/png/Noteeth.png';
+import OpensmileSrc from '/png/Opensmile.png';
+import PinkmouthSrc from '/png/Pinkmouth.png';
+import PinktoungeoutSrc from '/png/Pinktoungeout.png';
+import UnderbiteSrc from '/png/Underbite.png';
+
 
 const canvasHost = ref(null);
 
@@ -42,7 +73,37 @@ const VID_W = 330, VID_H = 240;
 
 // palette-ikoner (nede i panelet)
 const palette = [
-  { key: 'hat', src: hatSrc, x: 55, y: 320, w: 60, h: 60 }
+  //hats
+  { key: 'Beanie', src: BeanieSrc, x: 55, y: 320, w: 60, h: 60 },
+  { key: 'Beret', src: BeretSrc, x: 115, y: 320, w: 60, h: 60 },
+  { key: 'Buckethat', src: BuckethatSrc, x: 175, y: 320, w: 60, h: 60 },
+  { key: 'Cap', src: CapSrc, x: 235, y: 320, w: 60, h: 60 },
+  { key: 'Cowboyhat', src: CowboyhatSrc, x: 295, y: 320, w: 60, h: 60 },
+  { key: 'Ladyhat', src: LadyhatSrc, x: 55, y: 380, w: 60, h: 60 },
+  { key: 'Partyhatone', src: PartyhatoneSrc, x: 115, y: 380, w: 60, h: 60 },
+  { key: 'Partyhattwo', src: PartyhattwoSrc, x: 175, y: 380, w: 60, h: 60 },
+  { key: 'Partyhatthree', src: PartyhatthreeSrc, x: 235, y: 380, w: 60, h: 60 },
+  { key: 'Propel', src: PropelSrc, x: 295, y: 380, w: 60, h: 60 },
+  { key: 'Tallhat', src: TallhatSrc, x: 55, y: 440, w: 60, h: 60 },
+
+  //Glasses
+  { key: 'Catsunnies', src: CatsunniesSrc, x: 115, y: 440, w: 60, h: 60 },
+  { key: 'Flowersunnies', src: FlowersunniesSrc, x: 175, y: 440, w: 60, h: 60 },
+  { key: 'Heartsunnies', src: HeartsunniesSrc, x: 235, y: 440, w: 60, h: 60 },
+  { key: 'Pixelsunnies', src: PixelsunniesSrc, x: 295, y: 440, w: 60, h: 60 },
+  { key: 'Squaresunnies', src: SquaresunniesSrc, x: 55, y: 500, w: 60, h: 60 },
+  { key: 'Starsunnies', src: StarSunniesSrc, x: 115, y: 500, w: 60, h: 60 },
+
+  //Mouths
+  { key: 'Biglips', src: BiglipsSrc, x: 175, y: 500, w: 60, h: 60 },
+  { key: 'Bluetoungeout', src: BluetoungeoutSrc, x: 235, y: 500, w: 60, h: 60 },
+  { key: 'Greenmouth', src: GreenmouthSrc, x: 295, y: 500, w: 60, h: 60 },
+  { key: 'Happylady', src: HappylaydSrc, x: 55, y: 560, w: 60, h: 60 },
+  { key: 'Noteeth', src: NoteethSrc, x: 115, y: 560, w: 60, h: 60 },
+  { key: 'Opensmile', src: OpensmileSrc, x: 175, y: 560, w: 60, h: 60 },
+  { key: 'Pinkmouth', src: PinkmouthSrc, x: 235, y: 560, w: 60, h: 60 },
+  { key: 'Pinktoungeout', src: PinktoungeoutSrc, x: 295, y: 560, w: 60, h: 60 },
+  { key: 'Underbite', src: UnderbiteSrc, x: 55, y: 620, w: 60, h: 60 }
 ];
 
 // robust Miro-detektion
@@ -106,13 +167,15 @@ const makeSketch = (p) => {
   p.assets = {};
 
   p.preload = () => {
-    p.assets.hat = p.loadImage(hatSrc);
+    for (const item of palette) {
+      p.assets[item.key] = p.loadImage(item.src);
+    }
   };
 
   p.setup = () => {
     p.pixelDensity(1);
     p.angleMode(p.RADIANS);
-    p.createCanvas(330, 390);
+    p.createCanvas(330, 680);
 
     // opretter kamera og skjuler det
     g.video = p.createCapture({ video: { facingMode: 'user', width: VID_W, height: VID_H }, audio: false });
@@ -253,24 +316,53 @@ const makeSketch = (p) => {
   function drawPalette(p) {
     p.noStroke();
     p.fill(205);
-    p.rect(0, 250, 330, 140);
+    p.rect(0, 250, 330, 430);
 
     p.fill(30);
+    p.textSize(14);
+    p.textStyle(p.BOLD);
+    p.text('Hats', 10, 270);
+    p.textStyle(p.NORMAL);
     p.textSize(12);
-    p.text('Decor', 10, 265);
 
-    for (const item of palette) {
+    let hatCount = 0;
+    let glassesStart = -1;
+    let mouthsStart = -1;
+
+    // Draw all items
+    for (let i = 0; i < palette.length; i++) {
+      const item = palette[i];
       const img = p.assets[item.key];
       if (!img) continue;
+
+      // Track category transitions
+      if (item.key === 'Catsunnies' && glassesStart === -1) {
+        glassesStart = item.y;
+      }
+      if (item.key === 'Biglips' && mouthsStart === -1) {
+        mouthsStart = item.y;
+      }
+
       p.push();
       p.imageMode(p.CENTER);
       p.image(img, item.x, item.y, item.w, item.h);
       p.pop();
 
       if (dist2(p.mouseX, p.mouseY, item.x, item.y) < (Math.max(item.w, item.h)/2)**2) {
-        p.noFill(); p.stroke(0); p.strokeWeight(1);
+        p.noFill(); p.stroke(0); p.strokeWeight(2);
         p.rect(item.x - item.w/2 - 4, item.y - item.h/2 - 4, item.w + 8, item.h + 8);
       }
+    }
+
+    // Draw category labels
+    p.fill(30);
+    p.textSize(14);
+    p.textStyle(p.BOLD);
+    if (glassesStart !== -1) {
+      p.text('Glasses', 10, glassesStart - 10);
+    }
+    if (mouthsStart !== -1) {
+      p.text('Mouths', 10, mouthsStart - 10);
     }
   }
 
