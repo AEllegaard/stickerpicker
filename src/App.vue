@@ -254,7 +254,7 @@ const makeSketch = (p) => {
 
       // FaceMesh via ml5
       faceMesh = await ml5.faceMesh({
-        maxFaces: 1,
+        maxFaces: 2,
         refineLandmarks: false,
         flipped: true
       });
