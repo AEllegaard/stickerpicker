@@ -3,7 +3,7 @@ import { onMounted, onBeforeUnmount, ref } from 'vue';
 import './assets/style.css';
 
 // import deco-ressourcer
-//hats
+//hats måske
 import BeanieSrc from './assets/png/Beanie.png';
 import BeretSrc from './assets/png/Beret.png';
 import BuckethatSrc from './assets/png/Buckethat.png';
