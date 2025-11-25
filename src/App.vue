@@ -1237,14 +1237,14 @@ onBeforeUnmount(() => {
         <div class="asset-scroll" ref="assetScroll">
           <div class="asset-grid">
             <button v-for="item in pagedAssets" :key="item.key" class="asset-thumb" @click="addAsset(item)">
-              <img :src="item.src" :alt="item.key" />
+              <img :src="item.src" :alt="item.key" v-if="item.src" />
             </button>
           </div>
         </div>
         <div class="pagination-row">
-          <button class="page-btn" :disabled="pageIndex[selectedCategory] === 0" @click="prevPage">&lt;</button>
-          <span class="page-indicator">{{ pageIndex[selectedCategory]+1 }}/{{ totalPages }}</span>
-          <button class="page-btn" :disabled="pageIndex[selectedCategory] >= totalPages-1" @click="nextPage">&gt;</button>
+    <button class="page-btn" :disabled="pageIndex[selectedCategory.value] === 0" @click="prevPage">&lt;</button>
+    <span class="page-indicator">{{ pageIndex[selectedCategory.value]+1 }}/{{ totalPages }}</span>
+    <button class="page-btn" :disabled="pageIndex[selectedCategory.value] >= totalPages-1" @click="nextPage">&gt;</button>
         </div>
       </div>
     </div>
