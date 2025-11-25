@@ -1217,6 +1217,11 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+.asset-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(64px, 1fr));
+  gap: 10px;
+}
 .asset-thumb {
   min-width: 64px;
   min-height: 64px;
@@ -1226,7 +1231,6 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 2px;
 }
 .asset-thumb img {
   max-width: 48px;
