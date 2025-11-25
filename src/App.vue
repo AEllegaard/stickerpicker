@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, onBeforeUnmount, ref } from 'vue';
+import { onMounted, onBeforeUnmount, ref, reactive, computed } from 'vue';
 import './assets/style.css';
 
 // import deco-ressourcer
