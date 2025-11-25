@@ -230,7 +230,7 @@ const makeSketch = (p) => {
   p.setup = () => {
     p.pixelDensity(1);
     p.angleMode(p.RADIANS);
-    p.createCanvas(330, 600);
+  p.createCanvas(420, 600); // Increased width for better visibility
 
     // opretter kamera og skjuler det
     g.video = p.createCapture({ video: { facingMode: 'user', width: VID_W, height: VID_H }, audio: false });
@@ -295,8 +295,7 @@ const makeSketch = (p) => {
       g.pg.pop();
     }
 
-    // dekorationspanel
-    drawPalette(p);
+  // No asset panel or palette rendering in canvas
 
     // byg masken: ansigt + hænder
     let anyMask = false;
