@@ -381,43 +381,48 @@ const makeSketch = (p) => {
   };
 
   function drawPalette(p) {
+    // panel background
     p.noStroke();
-    p.fill(205);
-    p.rect(0, 250, 330, 240);
+    p.fill(250);
+    p.stroke(220);
+    p.strokeWeight(1);
+    p.rect(6, 254, 318, 232, 8);
 
-    // Draw randomize button at top right
-    const randomBtnX = 265;
-    const randomBtnY = 260;
-    const randomBtnW = 50;
-    const randomBtnH = 30;
-    
+    // header: title + randomize button
+    p.noStroke();
+    p.fill(30);
+    p.textSize(13);
+    p.textStyle(p.BOLD);
+    p.textAlign(p.LEFT, p.CENTER);
+    p.text('Assets', 18, 270);
+
+    const randomBtnX = 190;
+    const randomBtnY = 258;
+    const randomBtnW = 120;
+    const randomBtnH = 28;
     const isHoveringRandomize = p.mouseX >= randomBtnX && p.mouseX <= randomBtnX + randomBtnW &&
                                 p.mouseY >= randomBtnY && p.mouseY <= randomBtnY + randomBtnH;
-    
-    p.noStroke();
-    p.fill(isHoveringRandomize ? 80 : 100);
-    p.rect(randomBtnX, randomBtnY, randomBtnW, randomBtnH, 5);
-    
+    p.fill(isHoveringRandomize ? 90 : 110);
+    p.rect(randomBtnX, randomBtnY, randomBtnW, randomBtnH, 6);
     p.fill(255);
-    p.textSize(14);
+    p.textSize(12);
     p.textAlign(p.CENTER, p.CENTER);
-    p.text('🎨', randomBtnX + randomBtnW/2, randomBtnY + randomBtnH/2);
+    p.text('Randomize colors', randomBtnX + randomBtnW/2, randomBtnY + randomBtnH/2);
 
-    // Draw category buttons at top
-    const btnWidth = 85;
-    const btnHeight = 30;
-    const btnY = 260;
-    
+    // category buttons (compact row)
+    const btnWidth = 96;
+    const btnHeight = 28;
+    const btnY = 296;
     for (let i = 0; i < categories.length; i++) {
       const cat = categories[i];
-      const btnX = 10 + i * 90;
+      const btnX = 14 + i * (btnWidth + 8);
       const isSelected = cat.id === selectedCategory;
-      
+
+      p.fill(isSelected ? 100 : 235);
       p.noStroke();
-      p.fill(isSelected ? 100 : 170);
-      p.rect(btnX, btnY, btnWidth, btnHeight, 5);
-      
-      p.fill(255);
+      p.rect(btnX, btnY, btnWidth, btnHeight, 6);
+
+      p.fill(isSelected ? 255 : 50);
       p.textSize(11);
       p.textStyle(p.BOLD);
       p.textAlign(p.CENTER, p.CENTER);
@@ -434,6 +439,10 @@ const makeSketch = (p) => {
       
       p.push();
       p.imageMode(p.CENTER);
+      // draw asset thumbnail with subtle background to feel like a pill
+      p.noStroke();
+      p.fill(245);
+      p.rect(item.x, item.y, item.w + 8, item.h + 8, 8);
       p.image(img, item.x, item.y, item.w, item.h);
       p.pop();
 
@@ -445,12 +454,12 @@ const makeSketch = (p) => {
   }
   
   function getCategoryButtonAt(mx, my) {
-    const btnWidth = 85;
-    const btnHeight = 30;
-    const btnY = 260;
-    
+    const btnWidth = 96;
+    const btnHeight = 28;
+    const btnY = 296;
+
     for (let i = 0; i < categories.length; i++) {
-      const btnX = 10 + i * 90;
+      const btnX = 14 + i * (btnWidth + 8);
       if (mx >= btnX && mx <= btnX + btnWidth && my >= btnY && my <= btnY + btnHeight) {
         return categories[i].id;
       }
@@ -459,10 +468,10 @@ const makeSketch = (p) => {
   }
 
   function isClickingRandomizeButton(mx, my) {
-    const randomBtnX = 265;
-    const randomBtnY = 260;
-    const randomBtnW = 50;
-    const randomBtnH = 30;
+    const randomBtnX = 190;
+    const randomBtnY = 258;
+    const randomBtnW = 120;
+    const randomBtnH = 28;
     return mx >= randomBtnX && mx <= randomBtnX + randomBtnW && my >= randomBtnY && my <= randomBtnY + randomBtnH;
   }
 
