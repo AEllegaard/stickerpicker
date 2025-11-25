@@ -1199,39 +1199,37 @@ onBeforeUnmount(() => {
         <span style="font-size:12px">(Remember to allow camera access)</span>
       </div>
     </div>
-    <div class="grid wrapper">
-      <div class="canvas cs1 ce8">
-        <div ref="canvasHost" style="min-height: 400px;"></div>
-      </div>
+    <div class="canvas" style="margin-bottom: 24px;">
+      <div ref="canvasHost" style="min-height: 400px;"></div>
+    </div>
 
-      <div class="asset-panel cs9 ce12">
-        <div class="asset-header">
-          <span class="asset-title">Assets</span>
-          <button class="randomize-btn" @click="randomizeColors">Randomize colors</button>
-        </div>
-        <div class="category-row">
-          <button v-for="cat in categories" :key="cat.id" :class="['cat-btn', { selected: cat.id === selectedCategory }]" @click="selectCategory(cat.id)">{{ cat.label }}</button>
-        </div>
-        <div class="asset-scroll" ref="assetScroll">
-          <div class="asset-grid">
-            <button v-for="item in pagedAssets" :key="item.key" class="asset-thumb" @click="addAsset(item)">
-              <img :src="item.src" :alt="item.key" />
-            </button>
-          </div>
-        </div>
-        <div class="pagination-row">
-          <button class="page-btn" :disabled="pageIndex[selectedCategory] === 0" @click="prevPage">&lt;</button>
-          <span class="page-indicator">{{ pageIndex[selectedCategory]+1 }}/{{ totalPages }}</span>
-          <button class="page-btn" :disabled="pageIndex[selectedCategory] >= totalPages-1" @click="nextPage">&gt;</button>
+    <div class="asset-panel" style="margin-bottom: 18px;">
+      <div class="asset-header">
+        <span class="asset-title">Assets</span>
+        <button class="randomize-btn" @click="randomizeColors">Randomize colors</button>
+      </div>
+      <div class="category-row">
+        <button v-for="cat in categories" :key="cat.id" :class="['cat-btn', { selected: cat.id === selectedCategory }]" @click="selectCategory(cat.id)">{{ cat.label }}</button>
+      </div>
+      <div class="asset-scroll" ref="assetScroll">
+        <div class="asset-grid">
+          <button v-for="item in pagedAssets" :key="item.key" class="asset-thumb" @click="addAsset(item)">
+            <img :src="item.src" :alt="item.key" />
+          </button>
         </div>
       </div>
+      <div class="pagination-row">
+        <button class="page-btn" :disabled="pageIndex[selectedCategory] === 0" @click="prevPage">&lt;</button>
+        <span class="page-indicator">{{ pageIndex[selectedCategory]+1 }}/{{ totalPages }}</span>
+        <button class="page-btn" :disabled="pageIndex[selectedCategory] >= totalPages-1" @click="nextPage">&gt;</button>
+      </div>
+    </div>
 
-      <div class="butn cs1 ce12" style="display:flex; gap:5px; align-items:center;">
-        <button class="button button-primary" @click="pasteSticker">
-          {{ buttonLabel }}
-        </button>
-        <span v-if="!inMiroRef" style="font-size:12px; opacity:.7;">(kører uden for Miro)</span>
-      </div>
+    <div class="butn" style="display:flex; gap:5px; align-items:center; margin-bottom: 12px;">
+      <button class="button button-primary" @click="pasteSticker">
+        {{ buttonLabel }}
+      </button>
+      <span v-if="!inMiroRef" style="font-size:12px; opacity:.7;">(kører uden for Miro)</span>
     </div>
   </div>
 </template>
