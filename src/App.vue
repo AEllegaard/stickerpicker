@@ -54,6 +54,8 @@ let faces = [];
 let decos = [];
 // thumbnail positions for palette hit detection
 let thumbPositions = new Map();
+// pagination state per category
+let pageIndex = { hats: 0, glasses: 0, mouths: 0 };
 
 // fallback loop stopper
 let stopManualFaceDetect = null;
@@ -333,11 +335,31 @@ const makeSketch = (p) => {
       randomizeDecoColors();
       return;
     }
+    // pagination prev/next
+    if (isClickingPrevPage(p.mouseX, p.mouseY)) {
+      const cat = selectedCategory;
+      pageIndex[cat] = Math.max(0, (pageIndex[cat] || 0) - 1);
+      return;
+    }
+    if (isClickingNextPage(p.mouseX, p.mouseY)) {
+      const cat = selectedCategory;
+      // compute total pages for category
+      const panelPad = 6; const panelX = panelPad; const panelY = 254; const panelW = Math.max(220, p.width - panelPad * 2);
+      const contentW = panelW - 24; const gap = 12; const minThumb = 44; let cols = Math.floor((contentW + gap) / (minThumb + gap)); cols = Math.max(1, Math.min(cols, 4));
+      const thumbW = Math.max(minThumb, Math.min(64, Math.floor((contentW - (cols - 1) * gap) / cols)));
+      const contentY = panelY + 46 + 28 + 12; const contentH = 240 - (contentY - panelY) - 12; const rows = Math.max(1, Math.floor((contentH + gap) / (thumbW + gap)));
+      const itemsPerPage = rows * cols;
+      const filteredItems = palette.filter(item => item.category === cat);
+      const totalPages = Math.max(1, Math.ceil(filteredItems.length / itemsPerPage));
+      pageIndex[cat] = Math.min(totalPages - 1, (pageIndex[cat] || 0) + 1);
+      return;
+    }
     
     // Check if clicking on category button
     const catClick = getCategoryButtonAt(p.mouseX, p.mouseY);
     if (catClick) {
       selectedCategory = catClick;
+      pageIndex[catClick] = 0;
       return;
     }
     
@@ -451,6 +473,7 @@ const makeSketch = (p) => {
     const contentX = panelX + 12;
     const contentY = catY + catBtnH + 12;
     const contentW = panelW - 24;
+    const contentH = panelH - (contentY - panelY) - 12;
     const filteredItems = palette.filter(item => item.category === selectedCategory);
     thumbPositions.clear();
 
@@ -463,13 +486,25 @@ const makeSketch = (p) => {
     const thumbW = Math.max(minThumb, Math.min(maxThumb, Math.floor((contentW - (cols - 1) * gap) / cols)));
     const thumbH = thumbW;
 
-    for (let idx = 0; idx < filteredItems.length; idx++) {
+    // compute rows that fit in content area
+    const rows = Math.max(1, Math.floor((contentH + gap) / (thumbH + gap)));
+    const itemsPerPage = rows * cols;
+    const totalPages = Math.max(1, Math.ceil(filteredItems.length / itemsPerPage));
+    let page = pageIndex[selectedCategory] || 0;
+    if (page >= totalPages) page = totalPages - 1;
+    pageIndex[selectedCategory] = page;
+
+    const start = page * itemsPerPage;
+    const end = Math.min(filteredItems.length, start + itemsPerPage);
+
+    for (let idx = start; idx < end; idx++) {
+      const localIdx = idx - start;
       const item = filteredItems[idx];
-      const col = idx % cols;
-      const row = Math.floor(idx / cols);
+      const col = localIdx % cols;
+      const row = Math.floor(localIdx / cols);
       const x = contentX + col * (thumbW + gap) + thumbW/2;
       const y = contentY + row * (thumbH + gap) + thumbH/2;
-      thumbPositions.set(item.key, { x, y, w: thumbW, h: thumbH, item });
+      thumbPositions.set(item.key, { x, y, w: thumbW, h: thumbH, item, page });
 
       const img = p.assets[item.key];
       if (!img) continue;
@@ -486,6 +521,71 @@ const makeSketch = (p) => {
         p.rect(x - thumbW/2 - 4, y - thumbH/2 - 4, thumbW + 8, thumbH + 8);
       }
     }
+
+    // draw pagination controls
+    const ctrlW = 28, ctrlH = 24;
+    const ctrlX = panelX + panelW - 12 - ctrlW * 2 - 8;
+    const ctrlY = panelY + panelH - 12 - ctrlH;
+    // prev
+    p.fill(page > 0 ? 120 : 200);
+    p.noStroke();
+    p.rect(ctrlX, ctrlY, ctrlW, ctrlH, 6);
+    p.fill(255);
+    p.textAlign(p.CENTER, p.CENTER);
+    p.text('<', ctrlX + ctrlW/2, ctrlY + ctrlH/2);
+    // page indicator
+    p.noStroke();
+    p.fill(80);
+    p.textSize(11);
+    p.text(`${page+1}/${totalPages}`, ctrlX + ctrlW + 6 + 20, ctrlY + ctrlH/2);
+    // next
+    p.fill(page < totalPages - 1 ? 120 : 200);
+    p.rect(ctrlX + ctrlW + 48, ctrlY, ctrlW, ctrlH, 6);
+    p.fill(255);
+    p.text('>', ctrlX + ctrlW + 48 + ctrlW/2, ctrlY + ctrlH/2);
+  }
+
+  // draw pagination controls (if needed)
+  function drawPagination(p) {
+    const panelPad = 6;
+    const panelX = panelPad;
+    const panelY = 254;
+    const panelW = Math.max(220, p.width - panelPad * 2);
+    const contentW = panelW - 24;
+    const filteredItems = palette.filter(item => item.category === selectedCategory);
+    const gap = 12;
+    const minThumb = 44;
+    let cols = Math.floor((contentW + gap) / (minThumb + gap));
+    cols = Math.max(1, Math.min(cols, 4));
+    const rows = Math.ceil(filteredItems.length / cols);
+    const itemsPerPage = cols * Math.max(1, Math.floor((200) / (minThumb + gap)));
+    const totalPages = Math.max(1, Math.ceil(filteredItems.length / itemsPerPage));
+    const page = pageIndex[selectedCategory] || 0;
+
+    // small controls at bottom-right of panel
+    const ctrlW = 28, ctrlH = 24;
+    const ctrlX = panelX + panelW - 12 - ctrlW * 2 - 8;
+    const ctrlY = panelY + panelH - 12 - ctrlH;
+
+    // prev
+    p.fill(page > 0 ? 120 : 200);
+    p.noStroke();
+    p.rect(ctrlX, ctrlY, ctrlW, ctrlH, 6);
+    p.fill(255);
+    p.textAlign(p.CENTER, p.CENTER);
+    p.text('<', ctrlX + ctrlW/2, ctrlY + ctrlH/2);
+
+    // page indicator
+    p.noStroke();
+    p.fill(80);
+    p.textSize(11);
+    p.text(`${page+1}/${totalPages}`, ctrlX + ctrlW + 6 + 20, ctrlY + ctrlH/2);
+
+    // next
+    p.fill(page < totalPages - 1 ? 120 : 200);
+    p.rect(ctrlX + ctrlW + 48, ctrlY, ctrlW, ctrlH, 6);
+    p.fill(255);
+    p.text('>', ctrlX + ctrlW + 48 + ctrlW/2, ctrlY + ctrlH/2);
   }
   
   function getCategoryButtonAt(mx, my) {
@@ -518,6 +618,30 @@ const makeSketch = (p) => {
     const randomBtnX = panelX + panelW - randomBtnW - 12;
     const randomBtnY = panelY + 10;
     return mx >= randomBtnX && mx <= randomBtnX + randomBtnW && my >= randomBtnY && my <= randomBtnY + randomBtnH;
+  }
+
+  function isClickingPrevPage(mx, my) {
+    const panelPad = 6;
+    const panelX = panelPad;
+    const panelY = 254;
+    const panelW = Math.max(220, pInstance.width - panelPad * 2);
+    const panelH = 240;
+    const ctrlW = 28, ctrlH = 24;
+    const ctrlX = panelX + panelW - 12 - ctrlW * 2 - 8;
+    const ctrlY = panelY + panelH - 12 - ctrlH;
+    return mx >= ctrlX && mx <= ctrlX + ctrlW && my >= ctrlY && my <= ctrlY + ctrlH;
+  }
+
+  function isClickingNextPage(mx, my) {
+    const panelPad = 6;
+    const panelX = panelPad;
+    const panelW = Math.max(220, pInstance.width - panelPad * 2);
+    const panelH = 240;
+    const ctrlW = 28, ctrlH = 24;
+    const ctrlX = panelX + panelW - 12 - ctrlW * 2 - 8;
+    const ctrlY = panelY + panelH - 12 - ctrlH;
+    const nextX = ctrlX + ctrlW + 48;
+    return mx >= nextX && mx <= nextX + ctrlW && my >= ctrlY && my <= ctrlY + ctrlH;
   }
 
   function randomizeDecoColors() {
