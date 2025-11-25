@@ -944,7 +944,7 @@ function addAsset(item) {
   if (!pInstance || !pInstance.assets || !pInstance.assets[item.key]) return;
   const img = pInstance.assets[item.key];
   let x = VID_W/2, y = VID_H/2;
-  if (faces.length > 0) {
+  if (faces.length > 0 && faces[0].boundingBox) {
     const fb = faces[0].boundingBox;
     x = fb.cx;
     if (item.category === 'hats') y = fb.cy - fb.h * 0.6;
@@ -1217,6 +1217,25 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+.asset-thumb {
+  min-width: 64px;
+  min-height: 64px;
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 2px;
+}
+.asset-thumb img {
+  max-width: 48px;
+  max-height: 48px;
+  border-radius: 6px;
+  background: #f8f8f8;
+  border: 1px solid #eee;
+  display: block;
+}
 .canvas { background: #ececec; border: 1px solid #eee; border-radius: 8px; padding: 8px; }
 .loading-overlay {
   position: fixed;
