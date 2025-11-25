@@ -392,25 +392,33 @@ const makeSketch = (p) => {
   };
 
   function drawPalette(p) {
-    // panel background
+    // Responsive panel layout based on canvas width
+    const panelPad = 6;
+    const panelX = panelPad;
+    const panelY = 254;
+    const panelW = Math.max(220, p.width - panelPad * 2);
+    const panelH = 240;
+
     p.noStroke();
     p.fill(250);
     p.stroke(220);
     p.strokeWeight(1);
-    p.rect(6, 254, 318, 232, 8);
+    p.rect(panelX, panelY, panelW, panelH, 8);
 
-    // header: title + randomize button
+    // header and randomize button (positions computed from panel)
+    const headerX = panelX + 12;
+    const headerY = panelY + 16;
     p.noStroke();
     p.fill(30);
     p.textSize(13);
     p.textStyle(p.BOLD);
     p.textAlign(p.LEFT, p.CENTER);
-    p.text('Assets', 18, 270);
+    p.text('Assets', headerX, headerY);
 
-    const randomBtnX = 190;
-    const randomBtnY = 258;
-    const randomBtnW = 120;
-    const randomBtnH = 28;
+    const randomBtnW = Math.min(140, Math.max(96, Math.floor(panelW * 0.35)));
+    const randomBtnH = 30;
+    const randomBtnX = panelX + panelW - randomBtnW - 12;
+    const randomBtnY = panelY + 10;
     const isHoveringRandomize = p.mouseX >= randomBtnX && p.mouseX <= randomBtnX + randomBtnW &&
                                 p.mouseY >= randomBtnY && p.mouseY <= randomBtnY + randomBtnH;
     p.fill(isHoveringRandomize ? 90 : 110);
@@ -420,50 +428,53 @@ const makeSketch = (p) => {
     p.textAlign(p.CENTER, p.CENTER);
     p.text('Randomize colors', randomBtnX + randomBtnW/2, randomBtnY + randomBtnH/2);
 
-    // category buttons (compact row)
-    const btnWidth = 96;
-    const btnHeight = 28;
-    const btnY = 296;
+    // category buttons row
+    const catY = panelY + 46;
+    const catPad = 12;
+    const catBtnW = Math.floor((panelW - catPad * 2 - (categories.length - 1) * 8) / categories.length);
+    const catBtnH = 28;
     for (let i = 0; i < categories.length; i++) {
-      const cat = categories[i];
-      const btnX = 14 + i * (btnWidth + 8);
-      const isSelected = cat.id === selectedCategory;
-
-      p.fill(isSelected ? 100 : 235);
+      const btnX = panelX + catPad + i * (catBtnW + 8);
+      const isSelected = categories[i].id === selectedCategory;
       p.noStroke();
-      p.rect(btnX, btnY, btnWidth, btnHeight, 6);
-
+      p.fill(isSelected ? 100 : 235);
+      p.rect(btnX, catY, catBtnW, catBtnH, 6);
       p.fill(isSelected ? 255 : 50);
       p.textSize(11);
       p.textStyle(p.BOLD);
       p.textAlign(p.CENTER, p.CENTER);
-      p.text(cat.label, btnX + btnWidth/2, btnY + btnHeight/2);
+      p.text(categories[i].label, btnX + catBtnW/2, catY + catBtnH/2);
     }
     p.textAlign(p.LEFT);
 
-    // Draw assets for selected category (grid)
+    // content area: compute thumbnail grid responsively
+    const contentX = panelX + 12;
+    const contentY = catY + catBtnH + 12;
+    const contentW = panelW - 24;
     const filteredItems = palette.filter(item => item.category === selectedCategory);
     thumbPositions.clear();
-    const panelLeft = 6;
-    const innerX = panelLeft + 18;
-    const startY = 336;
-    const cols = 3;
-    const thumbW = 56, thumbH = 56;
+
+    // determine thumbnail size and columns based on available width
+    const maxThumb = 64;
+    const minThumb = 44;
+    const gap = 12;
+    let cols = Math.floor((contentW + gap) / (minThumb + gap));
+    cols = Math.max(1, Math.min(cols, 4));
+    const thumbW = Math.max(minThumb, Math.min(maxThumb, Math.floor((contentW - (cols - 1) * gap) / cols)));
+    const thumbH = thumbW;
 
     for (let idx = 0; idx < filteredItems.length; idx++) {
       const item = filteredItems[idx];
       const col = idx % cols;
       const row = Math.floor(idx / cols);
-      const x = innerX + col * (thumbW + 14);
-      const y = startY + row * (thumbH + 14);
+      const x = contentX + col * (thumbW + gap) + thumbW/2;
+      const y = contentY + row * (thumbH + gap) + thumbH/2;
       thumbPositions.set(item.key, { x, y, w: thumbW, h: thumbH, item });
 
       const img = p.assets[item.key];
       if (!img) continue;
-
       p.push();
       p.imageMode(p.CENTER);
-      // draw asset thumbnail with subtle background to feel like a pill
       p.noStroke();
       p.fill(245);
       p.rect(x, y, thumbW + 8, thumbH + 8, 8);
@@ -478,13 +489,19 @@ const makeSketch = (p) => {
   }
   
   function getCategoryButtonAt(mx, my) {
-    const btnWidth = 96;
-    const btnHeight = 28;
-    const btnY = 296;
+    // compute category button positions dynamically (same logic as drawPalette)
+    const panelPad = 6;
+    const panelX = panelPad;
+    const panelY = 254;
+    const panelW = Math.max(220, pInstance.width - panelPad * 2);
+    const catY = panelY + 46;
+    const catPad = 12;
+    const catBtnW = Math.floor((panelW - catPad * 2 - (categories.length - 1) * 8) / categories.length);
+    const catBtnH = 28;
 
     for (let i = 0; i < categories.length; i++) {
-      const btnX = 14 + i * (btnWidth + 8);
-      if (mx >= btnX && mx <= btnX + btnWidth && my >= btnY && my <= btnY + btnHeight) {
+      const btnX = panelX + catPad + i * (catBtnW + 8);
+      if (mx >= btnX && mx <= btnX + catBtnW && my >= catY && my <= catY + catBtnH) {
         return categories[i].id;
       }
     }
@@ -492,10 +509,14 @@ const makeSketch = (p) => {
   }
 
   function isClickingRandomizeButton(mx, my) {
-    const randomBtnX = 190;
-    const randomBtnY = 258;
-    const randomBtnW = 120;
-    const randomBtnH = 28;
+    const panelPad = 6;
+    const panelX = panelPad;
+    const panelY = 254;
+    const panelW = Math.max(220, pInstance.width - panelPad * 2);
+    const randomBtnW = Math.min(140, Math.max(96, Math.floor(panelW * 0.35)));
+    const randomBtnH = 30;
+    const randomBtnX = panelX + panelW - randomBtnW - 12;
+    const randomBtnY = panelY + 10;
     return mx >= randomBtnX && mx <= randomBtnX + randomBtnW && my >= randomBtnY && my <= randomBtnY + randomBtnH;
   }
 
