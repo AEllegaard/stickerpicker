@@ -1200,7 +1200,7 @@ onBeforeUnmount(() => {
       </div>
     </div>
     <div class="canvas" style="margin-bottom: 2px;">
-      <div ref="canvasHost" style="min-height: 400px;"></div>
+      <div ref="canvasHost" style="min-height: 300px;"></div>
     </div>
 
     <div class="asset-panel" style="margin-bottom: 18px;">
