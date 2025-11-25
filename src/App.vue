@@ -230,7 +230,7 @@ const makeSketch = (p) => {
   p.setup = () => {
     p.pixelDensity(1);
     p.angleMode(p.RADIANS);
-    p.createCanvas(330, 490);
+    p.createCanvas(330, 600);
 
     // opretter kamera og skjuler det
     g.video = p.createCapture({ video: { facingMode: 'user', width: VID_W, height: VID_H }, audio: false });
