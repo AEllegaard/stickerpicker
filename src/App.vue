@@ -1,3 +1,16 @@
+function addAsset(item) {
+  if (!pInstance || !pInstance.assets || !pInstance.assets[item.key]) return;
+  const img = pInstance.assets[item.key];
+  let x = VID_W/2, y = VID_H/2;
+  if (faces.length > 0) {
+    const fb = faces[0].boundingBox;
+    x = fb.cx;
+    if (item.category === 'hats') y = fb.cy - fb.h * 0.6;
+    else if (item.category === 'glasses') y = fb.cy - fb.h * 0.12;
+    else if (item.category === 'mouths') y = fb.cy + fb.h * 0.28;
+  }
+  decos.push(new Deco(pInstance, img, x, y, item.w, item.h));
+}
 <script setup>
 import { onMounted, onBeforeUnmount, ref, reactive, computed } from 'vue';
 import './assets/style.css';
