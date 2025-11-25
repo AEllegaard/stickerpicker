@@ -1205,7 +1205,7 @@ onBeforeUnmount(() => {
         <div ref="canvasHost" style="min-height: 400px;"></div>
       </div>
 
-      <div class="butn cs1 ce12" style="display:flex; gap:12px; align-items:center;">
+      <div class="butn cs1 ce12" style="display:flex; gap:5px; align-items:center;">
         <button class="button button-primary" @click="pasteSticker">
           {{ buttonLabel }}
         </button>
