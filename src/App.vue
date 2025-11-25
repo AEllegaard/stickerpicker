@@ -52,6 +52,8 @@ let faces = [];
 
 // deco-objekter på lærredet
 let decos = [];
+// thumbnail positions for palette hit detection
+let thumbPositions = new Map();
 
 // fallback loop stopper
 let stopManualFaceDetect = null;
@@ -341,17 +343,26 @@ const makeSketch = (p) => {
     
     const hit = hitPalette(p.mouseX, p.mouseY);
     if (hit) {
-      const pos = faceCenterOrFallback();
-      const img = p.assets[hit.key];
-
       const fb = currentFaceBounds();
-      let base = fb ? Math.max(fb.w, fb.h) * 1 : 100;
-      base = Math.max(80, Math.min(base, 220));
+      let pos = faceCenterOrFallback();
+      if (fb) {
+        pos.x = fb.cx;
+        // place at sensible default Y depending on category
+        if (hit.category === 'hats') pos.y = fb.cy - fb.h * 0.6;
+        else if (hit.category === 'glasses') pos.y = fb.cy - fb.h * 0.12;
+        else if (hit.category === 'mouths') pos.y = fb.cy + fb.h * 0.28;
+      }
 
-        // Default farve: vælg farve baseret på asset index i palette
-        const paletteIdx = palette.findIndex(item => item.key === hit.key);
-        const colorIdx = paletteIdx % COLORS.length;
-        decos.push(new Deco(p, img, pos.x, pos.y, base, base, COLORS[colorIdx]));
+      const img = p.assets[hit.key];
+      let base = fb ? Math.max(fb.w, fb.h) * 1 : 100;
+      // scale base for smaller decorations
+      const sizeFactor = hit.category === 'glasses' || hit.category === 'mouths' ? 0.6 : 1.0;
+      base = Math.max(60, Math.min(base * sizeFactor, 220));
+
+      // Default farve: vælg farve baseret på asset index i palette
+      const paletteIdx = palette.findIndex(item => item.key === hit.key);
+      const colorIdx = paletteIdx % COLORS.length;
+      decos.push(new Deco(p, img, pos.x, pos.y, base, base, COLORS[colorIdx]));
       return;
     }
     // grib eksisterende deco (øverst først)
@@ -430,25 +441,38 @@ const makeSketch = (p) => {
     }
     p.textAlign(p.LEFT);
 
-    // Draw assets for selected category
+    // Draw assets for selected category (grid)
     const filteredItems = palette.filter(item => item.category === selectedCategory);
-    
-    for (const item of filteredItems) {
+    thumbPositions.clear();
+    const panelLeft = 6;
+    const innerX = panelLeft + 18;
+    const startY = 336;
+    const cols = 3;
+    const thumbW = 56, thumbH = 56;
+
+    for (let idx = 0; idx < filteredItems.length; idx++) {
+      const item = filteredItems[idx];
+      const col = idx % cols;
+      const row = Math.floor(idx / cols);
+      const x = innerX + col * (thumbW + 14);
+      const y = startY + row * (thumbH + 14);
+      thumbPositions.set(item.key, { x, y, w: thumbW, h: thumbH, item });
+
       const img = p.assets[item.key];
       if (!img) continue;
-      
+
       p.push();
       p.imageMode(p.CENTER);
       // draw asset thumbnail with subtle background to feel like a pill
       p.noStroke();
       p.fill(245);
-      p.rect(item.x, item.y, item.w + 8, item.h + 8, 8);
-      p.image(img, item.x, item.y, item.w, item.h);
+      p.rect(x, y, thumbW + 8, thumbH + 8, 8);
+      p.image(img, x, y, thumbW, thumbH);
       p.pop();
 
-      if (dist2(p.mouseX, p.mouseY, item.x, item.y) < (Math.max(item.w, item.h)/2)**2) {
+      if (dist2(p.mouseX, p.mouseY, x, y) < (Math.max(thumbW, thumbH)/2)**2) {
         p.noFill(); p.stroke(0); p.strokeWeight(2);
-        p.rect(item.x - item.w/2 - 4, item.y - item.h/2 - 4, item.w + 8, item.h + 8);
+        p.rect(x - thumbW/2 - 4, y - thumbH/2 - 4, thumbW + 8, thumbH + 8);
       }
     }
   }
@@ -482,10 +506,11 @@ const makeSketch = (p) => {
   }
 
   function hitPalette(mx, my) {
-    for (const item of palette) {
+    // use computed thumbnail positions for hit testing
+    for (const [key, rect] of thumbPositions) {
+      const { x, y, w, h, item } = rect;
       if (item.category !== selectedCategory) continue;
-      const dx = mx - item.x, dy = my - item.y;
-      if (dx*dx + dy*dy <= (Math.max(item.w, item.h)/2)**2) return item;
+      if (mx >= x - w/2 && mx <= x + w/2 && my >= y - h/2 && my <= y + h/2) return item;
     }
     return null;
   }
