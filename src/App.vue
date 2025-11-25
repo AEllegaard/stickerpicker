@@ -81,7 +81,6 @@ const categories = [
   { id: 'mouths', label: 'Mouths' }
 ];
 
-import { ref, reactive, computed } from 'vue';
 const selectedCategory = ref('hats');
 const pageIndex = reactive({ hats: 0, glasses: 0, mouths: 0 });
 
