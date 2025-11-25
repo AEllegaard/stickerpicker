@@ -55,7 +55,6 @@ let decos = [];
 // thumbnail positions for palette hit detection
 let thumbPositions = new Map();
 // pagination state per category
-let pageIndex = { hats: 0, glasses: 0, mouths: 0 };
 
 // fallback loop stopper
 let stopManualFaceDetect = null;
@@ -82,7 +81,31 @@ const categories = [
   { id: 'mouths', label: 'Mouths' }
 ];
 
-let selectedCategory = 'hats'; // state for selected category
+import { ref, reactive, computed } from 'vue';
+const selectedCategory = ref('hats');
+const pageIndex = reactive({ hats: 0, glasses: 0, mouths: 0 });
+
+const pagedAssets = computed(() => {
+  const filtered = palette.filter(item => item.category === selectedCategory.value);
+  const itemsPerPage = 8;
+  const page = pageIndex[selectedCategory.value] || 0;
+  const start = page * itemsPerPage;
+  return filtered.slice(start, start + itemsPerPage);
+});
+const totalPages = computed(() => {
+  const filtered = palette.filter(item => item.category === selectedCategory.value);
+  return Math.max(1, Math.ceil(filtered.length / 8));
+});
+
+function selectCategory(catId) {
+  selectedCategory.value = catId;
+}
+function prevPage() {
+  if (pageIndex[selectedCategory.value] > 0) pageIndex[selectedCategory.value]--;
+}
+function nextPage() {
+  if (pageIndex[selectedCategory.value] < totalPages.value - 1) pageIndex[selectedCategory.value]++;
+}
 
 // farver til randomizer
 const COLORS = [
@@ -1200,7 +1223,7 @@ onBeforeUnmount(() => {
       </div>
     </div>
     <div class="canvas" style="margin-bottom: 2px;">
-      <div ref="canvasHost" style="min-height: 300px;"></div>
+      <div ref="canvasHost" style="min-height: 240px;"></div>
     </div>
 
     <div class="asset-panel" style="margin-bottom: 18px;">
