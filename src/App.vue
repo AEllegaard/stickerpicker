@@ -1199,7 +1199,7 @@ onBeforeUnmount(() => {
         <span style="font-size:12px">(Remember to allow camera access)</span>
       </div>
     </div>
-    <div class="canvas" style="margin-bottom: 24px;">
+    <div class="canvas" style="margin-bottom: 2px;">
       <div ref="canvasHost" style="min-height: 400px;"></div>
     </div>
 
