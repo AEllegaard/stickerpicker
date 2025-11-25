@@ -1,16 +1,3 @@
-function addAsset(item) {
-  if (!pInstance || !pInstance.assets || !pInstance.assets[item.key]) return;
-  const img = pInstance.assets[item.key];
-  let x = VID_W/2, y = VID_H/2;
-  if (faces.length > 0) {
-    const fb = faces[0].boundingBox;
-    x = fb.cx;
-    if (item.category === 'hats') y = fb.cy - fb.h * 0.6;
-    else if (item.category === 'glasses') y = fb.cy - fb.h * 0.12;
-    else if (item.category === 'mouths') y = fb.cy + fb.h * 0.28;
-  }
-  decos.push(new Deco(pInstance, img, x, y, item.w, item.h));
-}
 <script setup>
 import { onMounted, onBeforeUnmount, ref, reactive, computed } from 'vue';
 import './assets/style.css';
@@ -364,63 +351,7 @@ const makeSketch = (p) => {
 
   // klik i paletten: opret nyt deco
   p.mousePressed = () => {
-    // Check for randomize button
-    if (isClickingRandomizeButton(p.mouseX, p.mouseY)) {
-      randomizeDecoColors();
-      return;
-    }
-    // pagination prev/next
-    if (isClickingPrevPage(p.mouseX, p.mouseY)) {
-      const cat = selectedCategory;
-      pageIndex[cat] = Math.max(0, (pageIndex[cat] || 0) - 1);
-      return;
-    }
-    if (isClickingNextPage(p.mouseX, p.mouseY)) {
-      const cat = selectedCategory;
-      // compute total pages for category
-      const panelPad = 6; const panelX = panelPad; const panelY = 254; const panelW = Math.max(220, p.width - panelPad * 2);
-      const contentW = panelW - 24; const gap = 12; const minThumb = 44; let cols = Math.floor((contentW + gap) / (minThumb + gap)); cols = Math.max(1, Math.min(cols, 4));
-      const thumbW = Math.max(minThumb, Math.min(64, Math.floor((contentW - (cols - 1) * gap) / cols)));
-      const contentY = panelY + 46 + 28 + 12; const contentH = 240 - (contentY - panelY) - 12; const rows = Math.max(1, Math.floor((contentH + gap) / (thumbW + gap)));
-      const itemsPerPage = rows * cols;
-      const filteredItems = palette.filter(item => item.category === cat);
-      const totalPages = Math.max(1, Math.ceil(filteredItems.length / itemsPerPage));
-      pageIndex[cat] = Math.min(totalPages - 1, (pageIndex[cat] || 0) + 1);
-      return;
-    }
-    
-    // Check if clicking on category button
-    const catClick = getCategoryButtonAt(p.mouseX, p.mouseY);
-    if (catClick) {
-      selectedCategory = catClick;
-      pageIndex[catClick] = 0;
-      return;
-    }
-    
-    const hit = hitPalette(p.mouseX, p.mouseY);
-    if (hit) {
-      const fb = currentFaceBounds();
-      let pos = faceCenterOrFallback();
-      if (fb) {
-        pos.x = fb.cx;
-        // place at sensible default Y depending on category
-        if (hit.category === 'hats') pos.y = fb.cy - fb.h * 0.6;
-        else if (hit.category === 'glasses') pos.y = fb.cy - fb.h * 0.12;
-        else if (hit.category === 'mouths') pos.y = fb.cy + fb.h * 0.28;
-      }
-
-      const img = p.assets[hit.key];
-      let base = fb ? Math.max(fb.w, fb.h) * 1 : 100;
-      // scale base for smaller decorations
-      const sizeFactor = hit.category === 'glasses' || hit.category === 'mouths' ? 0.6 : 1.0;
-      base = Math.max(60, Math.min(base * sizeFactor, 220));
-
-      // Default farve: vælg farve baseret på asset index i palette
-      const paletteIdx = palette.findIndex(item => item.key === hit.key);
-      const colorIdx = paletteIdx % COLORS.length;
-      decos.push(new Deco(p, img, pos.x, pos.y, base, base, COLORS[colorIdx]));
-      return;
-    }
+    // Only handle canvas interactions (dragging, removing decos)
     // grib eksisterende deco (øverst først)
     for (let i = decos.length - 1; i >= 0; i--) {
       const d = decos[i];
@@ -1007,6 +938,20 @@ function pointInPoly(pt, poly){
     if (intersect) inside = !inside;
   }
   return inside;
+}
+
+function addAsset(item) {
+  if (!pInstance || !pInstance.assets || !pInstance.assets[item.key]) return;
+  const img = pInstance.assets[item.key];
+  let x = VID_W/2, y = VID_H/2;
+  if (faces.length > 0) {
+    const fb = faces[0].boundingBox;
+    x = fb.cx;
+    if (item.category === 'hats') y = fb.cy - fb.h * 0.6;
+    else if (item.category === 'glasses') y = fb.cy - fb.h * 0.12;
+    else if (item.category === 'mouths') y = fb.cy + fb.h * 0.28;
+  }
+  decos.push(new Deco(pInstance, img, x, y, item.w, item.h));
 }
 
 function segmentIntersectsRect(a, b, rect){
