@@ -1211,17 +1211,19 @@ onBeforeUnmount(() => {
       <div class="category-row">
         <button v-for="cat in categories" :key="cat.id" :class="['cat-btn', { selected: cat.id === selectedCategory }]" @click="selectCategory(cat.id)">{{ cat.label }}</button>
       </div>
-      <div class="asset-scroll" ref="assetScroll">
-        <div class="asset-grid">
-          <button v-for="item in pagedAssets" :key="item.key" class="asset-thumb" @click="addAsset(item)">
-            <img :src="item.src" :alt="item.key" />
-          </button>
+      <div class="asset-section">
+        <div class="asset-scroll" ref="assetScroll">
+          <div class="asset-grid">
+            <button v-for="item in pagedAssets" :key="item.key" class="asset-thumb" @click="addAsset(item)">
+              <img :src="item.src" :alt="item.key" />
+            </button>
+          </div>
         </div>
-      </div>
-      <div class="pagination-row">
-        <button class="page-btn" :disabled="pageIndex[selectedCategory] === 0" @click="prevPage">&lt;</button>
-        <span class="page-indicator">{{ pageIndex[selectedCategory]+1 }}/{{ totalPages }}</span>
-        <button class="page-btn" :disabled="pageIndex[selectedCategory] >= totalPages-1" @click="nextPage">&gt;</button>
+        <div class="pagination-row">
+          <button class="page-btn" :disabled="pageIndex[selectedCategory] === 0" @click="prevPage">&lt;</button>
+          <span class="page-indicator">{{ pageIndex[selectedCategory]+1 }}/{{ totalPages }}</span>
+          <button class="page-btn" :disabled="pageIndex[selectedCategory] >= totalPages-1" @click="nextPage">&gt;</button>
+        </div>
       </div>
     </div>
 
