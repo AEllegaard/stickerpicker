@@ -158,26 +158,8 @@ const palette = [
 
 // hjælpefunktion til at konvertere hex-farve til HSL og returnere CSS filter
 function getColorFilterFromHex(hex) {
-  const r = parseInt(hex.substr(1, 2), 16) / 255;
-  const g = parseInt(hex.substr(3, 2), 16) / 255;
-  const b = parseInt(hex.substr(5, 2), 16) / 255;
-  
-  const max = Math.max(r, g, b), min = Math.min(r, g, b);
-  let h = 0, s = 0, l = (max + min) / 2;
-  
-  if (max !== min) {
-    const d = max - min;
-    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-    switch (max) {
-      case r: h = (g - b) / d + (g < b ? 6 : 0); break;
-      case g: h = (b - r) / d + 2; break;
-      case b: h = (r - g) / d + 4; break;
-    }
-    h /= 6;
-  }
-  
-  const hue = Math.round(h * 360);
-  return `hue-rotate(${hue}deg) saturate(1.5)`;
+  // Farve skift udkommenteret
+  return 'none';
 }
 
 // robust Miro-detektion
@@ -202,7 +184,7 @@ class Deco {
     this.w = w; this.h = h;
     this.dragging = false;
     this._dx = 0; this._dy = 0;
-    this.color = color || COLORS[Math.floor(Math.random() * COLORS.length)];
+  // this.color = color; // farve skift udkommenteret
   }
   contains(mx, my) {
     return Math.abs(mx - this.x) <= this.w/2 && Math.abs(my - this.y) <= this.h/2;
@@ -233,7 +215,7 @@ class Deco {
     p.translate(this.x, this.y);
     p.rotate(this.angleToOrigin());
     p.imageMode(p.CENTER);
-    p.drawingContext.filter = getColorFilterFromHex(this.color);
+  // p.drawingContext.filter = getColorFilterFromHex(this.color); // farve skift udkommenteret
     p.image(this.img, 0, 0, this.w, this.h);
     p.drawingContext.filter = 'none';
     p.pop();
@@ -610,9 +592,10 @@ const makeSketch = (p) => {
   }
 
   function randomizeDecoColors() {
-    for (const deco of decos) {
-      deco.color = COLORS[Math.floor(Math.random() * COLORS.length)];
-    }
+    // farve skift udkommenteret
+    // for (const deco of decos) {
+    //   deco.color = COLORS[Math.floor(Math.random() * COLORS.length)];
+    // }
   }
 
   function hitPalette(mx, my) {
@@ -944,14 +927,18 @@ function addAsset(item) {
   if (!pInstance || !pInstance.assets || !pInstance.assets[item.key]) return;
   const img = pInstance.assets[item.key];
   let x = VID_W/2, y = VID_H/2;
+  let size = Math.max(item.w, item.h, 160); // default size at least 160px
   if (faces.length > 0 && faces[0].boundingBox) {
     const fb = faces[0].boundingBox;
     x = fb.cx;
     if (item.category === 'hats') y = fb.cy - fb.h * 0.6;
     else if (item.category === 'glasses') y = fb.cy - fb.h * 0.12;
     else if (item.category === 'mouths') y = fb.cy + fb.h * 0.28;
+    size = Math.max(fb.w, fb.h) * (item.category === 'glasses' || item.category === 'mouths' ? 0.7 : 1.1);
+    size = Math.max(160, Math.min(size, 260));
   }
-  decos.push(new Deco(pInstance, img, x, y, item.w, item.h));
+  // Always use default color (null disables randomization)
+  decos.push(new Deco(pInstance, img, x, y, size, size, null));
 }
 
 function segmentIntersectsRect(a, b, rect){
@@ -1186,7 +1173,7 @@ onBeforeUnmount(() => {
     <div class="asset-panel" style="margin-bottom: 18px;">
       <div class="asset-header">
         <span class="asset-title">Assets</span>
-        <button class="randomize-btn" @click="randomizeColors">Randomize colors</button>
+  <!-- <button class="randomize-btn" @click="randomizeColors">Randomize colors</button> -->
       </div>
       <div class="category-row">
         <button v-for="cat in categories" :key="cat.id" :class="['cat-btn', { selected: cat.id === selectedCategory }]" @click="selectCategory(cat.id)">{{ cat.label }}</button>
@@ -1222,6 +1209,7 @@ onBeforeUnmount(() => {
   grid-template-columns: repeat(auto-fit, minmax(64px, 1fr));
   gap: 10px;
 }
+
 .asset-thumb {
   min-width: 64px;
   min-height: 64px;
@@ -1232,6 +1220,7 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: center;
 }
+
 .asset-thumb img {
   max-width: 48px;
   max-height: 48px;
@@ -1240,7 +1229,13 @@ onBeforeUnmount(() => {
   border: 1px solid #eee;
   display: block;
 }
-.canvas { background: #ececec; border: 1px solid #eee; border-radius: 8px; padding: 8px; }
+
+.canvas { 
+  background: #ececec; 
+  border: 1px solid #eee; 
+  border-radius: 8px; 
+  padding: 8px; }
+
 .loading-overlay {
   position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;
@@ -1251,6 +1246,7 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: center;
 }
+
 .spinner {
   width: 48px;
   height: 48px;
