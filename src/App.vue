@@ -90,24 +90,10 @@ const assetsByCategory = computed(() => {
   return grouped;
 });
 
-// farver til randomizer
-const COLORS = [
-  '#0b60e1', // blue
-  '#6dcbff', // light blue
-  '#a41932', // maroon
-  '#fe5600', // orange
-  '#fe5600', // pink
-  '#fe5600', // peach
-  '#ffaf21', // gold
-  '#feee17', // yellow
-  '#d6cb8f', // sage
-  '#00602a', // dark green
-  '#00602a'  // bright green
-];
 
 // palette-ikoner (nede i panelet)
 const palette = [
-  //hats
+  //hats and bats
   { category: 'hats', key: 'Beanie', src: BeanieSrc, x: 55, y: 320, w: 60, h: 60 },
   { category: 'hats', key: 'Beret', src: BeretSrc, x: 115, y: 320, w: 60, h: 60 },
   { category: 'hats', key: 'Buckethat', src: BuckethatSrc, x: 175, y: 320, w: 60, h: 60 },
@@ -266,7 +252,7 @@ const makeSketch = (p) => {
   };
 
   p.draw = () => {
-    p.background(220);
+    p.background(rgb(236, 236, 236));
 
     // ryd buffers
     g.pg.clear();
@@ -1187,7 +1173,6 @@ onBeforeUnmount(() => {
 
 .canvas { 
   background: #ececec; 
-  border: 1px solid #eee; 
   border-radius: 8px; 
   padding: 8px;
   margin-bottom: 8px;
@@ -1249,8 +1234,6 @@ onBeforeUnmount(() => {
 
 .asset-thumb {
   aspect-ratio: 1;
-  background: #fff;
-  border: 1px solid #ddd;
   border-radius: 10px;
   display: flex;
   align-items: center;
@@ -1261,8 +1244,6 @@ onBeforeUnmount(() => {
 }
 
 .asset-thumb:hover {
-  border-color: #999;
-  background: #f5f5f5;
   transform: scale(1.05);
 }
 
