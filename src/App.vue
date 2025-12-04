@@ -1215,10 +1215,6 @@ onBeforeUnmount(() => {
         </div>
       </div>
     </div>
-
-    <div class="butn" style="display:flex; gap:5px; align-items:center; margin-bottom: 12px;">
-      <span v-if="!inMiroRef" style="font-size:12px; opacity:.7;">(kører uden for Miro)</span>
-    </div>
   </div>
 </template>
 
@@ -1271,7 +1267,7 @@ onBeforeUnmount(() => {
 .asset-panel {
   background: #f9f9f9;
   border: #333 1px solid;
-  border-radius: 24px;
+  border-radius: 24px 24px 0 0 ;
   padding: 16px;
   flex: 1;
   overflow: hidden;
