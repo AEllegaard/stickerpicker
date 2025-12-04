@@ -252,7 +252,7 @@ const makeSketch = (p) => {
   };
 
   p.draw = () => {
-    p.background(rgb(236, 236, 236));
+    p.background(236, 236, 236);
 
     // ryd buffers
     g.pg.clear();
@@ -1249,8 +1249,8 @@ onBeforeUnmount(() => {
 }
 
 .asset-thumb img {
-  max-width: 110%;
-  max-height: 110%;
+  max-width: 150%;
+  max-height: 150%;
   object-fit: contain;
 }
 
