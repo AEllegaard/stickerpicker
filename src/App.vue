@@ -1234,8 +1234,10 @@ onBeforeUnmount(() => {
 
 .asset-thumb {
   aspect-ratio: 1;
+  min-width: 120px;
+  min-height: 120px;
   background-color: #f9f9f9;
-  border:none;
+  border: none;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1245,12 +1247,12 @@ onBeforeUnmount(() => {
 }
 
 .asset-thumb:hover {
-  transform: scale(1.2);
+  transform: scale(1.4);
 }
 
 .asset-thumb img {
-  max-width: 150%;
-  max-height: 150%;
+  max-width: 100%;
+  max-height: 100%;
   object-fit: contain;
 }
 
