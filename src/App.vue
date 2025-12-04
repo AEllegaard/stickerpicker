@@ -1213,10 +1213,18 @@ onBeforeUnmount(() => {
     </div>
     <div class="canvas" style="margin-bottom: 2px;">
       <div ref="canvasHost" style="min-height: 240px;"></div>
-      <div class="button-group" style="flex-direction: row; gap: 12px; align-items: center; justify-content: flex-end;">
-        <button class="btn-action" style="padding:0; background: none;" @click="undoLastAsset">
-          <img src="./assets/undo.svg" alt="Undo" width="22" height="22" style="display:inline; vertical-align:middle;" />
-        </button>
+      <div class="button-group" style="flex-direction: column; gap: 12px; align-items: flex-end; justify-content: flex-end;">
+        <div style="display: flex; gap: 12px;">
+          <button class="btn-action" style="padding:0; background: none;" @click="decreaseAssetSize">
+            <img src="./assets/minus.svg" alt="Decrease" width="22" height="22" style="display:inline; vertical-align:middle;" />
+          </button>
+          <button class="btn-action" style="padding:0; background: none;" @click="increaseAssetSize">
+            <img src="./assets/plus.svg" alt="Increase" width="22" height="22" style="display:inline; vertical-align:middle;" />
+          </button>
+          <button class="btn-action" style="padding:0; background: none;" @click="undoLastAsset">
+            <img src="./assets/undo.svg" alt="Undo" width="22" height="22" style="display:inline; vertical-align:middle;" />
+          </button>
+        </div>
         <button class="btn-action" @click="takeFaceSnapshot" v-if="!isFaceCaptured">
           Take photo
         </button>
