@@ -41,6 +41,7 @@ const canvasHost = ref(null);
 // UI state
 const inMiroRef = ref(false);
 const buttonLabel = ref('Save sticker locally');
+const isFaceCaptured = ref(false);
 
 const loading = ref(true); // loading state for face mesh
 
@@ -1094,13 +1095,29 @@ async function pasteSticker() {
       title: 'sticker.png',
     });
     await window.miro.board.viewport.zoomTo(created);
+    
+    // Reset after successful paste
+    isFaceCaptured.value = false;
+    decos = [];
   } catch (e) {
     console.warn('Ikke i Miro eller createImage fejlede. Gemmer lokalt.', e);
     const a = document.createElement('a');
     a.href = dataUrl;
     a.download = 'sticker.png';
     a.click();
+    
+    // Reset after successful save
+    isFaceCaptured.value = false;
+    decos = [];
   }
+}
+
+function takeFaceSnapshot() {
+  if (faces.length === 0) {
+    console.warn('Ingen ansigt fundet');
+    return;
+  }
+  isFaceCaptured.value = true;
 }
 
 onMounted(async () => {
@@ -1135,14 +1152,17 @@ onBeforeUnmount(() => {
         Loading face mesh… <br>
         <span style="font-size:12px">(Remember to allow camera access)</span>
       </div>
-      <div class="butn" style="display:flex; gap:5px; align-items:center; margin-bottom: 12px;">
-      <button class="button button-primary" @click="pasteSticker">
-        {{ buttonLabel }}
-      </button>
-      <span v-if="!inMiroRef" style="font-size:12px; opacity:.7;">(kører uden for Miro)</span>
     </div>
     <div class="canvas" style="margin-bottom: 2px;">
       <div ref="canvasHost" style="min-height: 240px;"></div>
+      <div class="button-group">
+        <button class="btn-action" @click="takeFaceSnapshot" v-if="!isFaceCaptured">
+          Take photo
+        </button>
+        <button class="btn-action" @click="pasteSticker" v-if="isFaceCaptured">
+          Save to board
+        </button>
+      </div>
     </div>
 
     <div class="asset-panel">
@@ -1158,7 +1178,8 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
-    
+    <div class="butn" style="display:flex; gap:5px; align-items:center; margin-bottom: 12px;">
+      <span v-if="!inMiroRef" style="font-size:12px; opacity:.7;">(kører uden for Miro)</span>
     </div>
   </div>
 </template>
@@ -1174,10 +1195,39 @@ onBeforeUnmount(() => {
 
 .canvas { 
   background: #ececec; 
-  border:none;
+  border: none;
   padding: 8px;
   margin-bottom: 8px;
   flex-shrink: 0;
+  position: relative;
+}
+
+.button-group {
+  position: absolute;
+  right: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.btn-action {
+  background: #000;
+  color: #fff;
+  border: none;
+  border-radius: 24px;
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.btn-action:hover {
+  background: #333;
+  transform: scale(1.05);
 }
 
 .asset-panel {
