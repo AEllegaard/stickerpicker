@@ -1135,6 +1135,11 @@ onBeforeUnmount(() => {
         Loading face mesh… <br>
         <span style="font-size:12px">(Remember to allow camera access)</span>
       </div>
+      <div class="butn" style="display:flex; gap:5px; align-items:center; margin-bottom: 12px;">
+      <button class="button button-primary" @click="pasteSticker">
+        {{ buttonLabel }}
+      </button>
+      <span v-if="!inMiroRef" style="font-size:12px; opacity:.7;">(kører uden for Miro)</span>
     </div>
     <div class="canvas" style="margin-bottom: 2px;">
       <div ref="canvasHost" style="min-height: 240px;"></div>
@@ -1153,11 +1158,7 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
-    <div class="butn" style="display:flex; gap:5px; align-items:center; margin-bottom: 12px;">
-      <button class="button button-primary" @click="pasteSticker">
-        {{ buttonLabel }}
-      </button>
-      <span v-if="!inMiroRef" style="font-size:12px; opacity:.7;">(kører uden for Miro)</span>
+    
     </div>
   </div>
 </template>
