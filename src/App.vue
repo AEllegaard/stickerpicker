@@ -1251,7 +1251,7 @@ onBeforeUnmount(() => {
 .button-group {
   position: absolute;
   right: 10px;
-  top: 70%;
+  top: 100%;
   transform: translateY(-50%);
   display: flex;
   flex-direction: column;
