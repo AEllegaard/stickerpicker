@@ -1182,6 +1182,7 @@ onBeforeUnmount(() => {
   flex-direction: column;
   height: 100vh;
   overflow: hidden;
+  background: #ececec;
 }
 
 .canvas { 
