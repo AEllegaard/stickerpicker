@@ -1214,7 +1214,7 @@ onBeforeUnmount(() => {
     <div class="canvas" style="margin-bottom: 2px;">
       <div ref="canvasHost" style="min-height: 240px;"></div>
       <div class="button-group" style="flex-direction: row; gap: 12px; align-items: center; justify-content: flex-end;">
-        <button class="btn-action" style="padding: 8px 5px; background: none;" @click="undoLastAsset">
+        <button class="btn-action" style="padding: 8px; background: none;" @click="undoLastAsset">
           <img src="./assets/undo.svg" alt="Undo" width="22" height="22" style="display:inline; vertical-align:middle; margin-right:2px;" />
         </button>
         <button class="btn-action" @click="takeFaceSnapshot" v-if="!isFaceCaptured">
