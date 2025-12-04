@@ -1249,8 +1249,8 @@ onBeforeUnmount(() => {
 }
 
 .asset-thumb img {
-  max-width: 100%;
-  max-height: 100%;
+  max-width: 110%;
+  max-height: 110%;
   object-fit: contain;
 }
 
