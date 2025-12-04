@@ -1167,6 +1167,12 @@ function resetSticker() {
   try { faceMesh?.detectStart?.(g.video.elt, (results) => { faces = results || []; }); } catch (e) { console.warn('faceMesh.detectStart fejlede', e); }
 }
 
+function undoLastAsset() {
+  if (decos.length > 0) {
+    decos.pop();
+  }
+}
+
 onMounted(async () => {
   const p5Mod = await import('p5');
   P5 = p5Mod.default;
@@ -1208,7 +1214,7 @@ onBeforeUnmount(() => {
     <div class="canvas" style="margin-bottom: 2px;">
       <div ref="canvasHost" style="min-height: 240px;"></div>
       <div class="button-group">
-        <img src="./assets/undo.svg" alt="Undo" width="22" height="22" style="margin-bottom: 10px; cursor:pointer;" @click="/* TODO: implement undo logic */" />
+        <img src="./assets/undo.svg" alt="Undo" width="22" height="22" style="margin-bottom: 10px; cursor:pointer;" @click="undoLastAsset" />
         <button class="btn-action" @click="takeFaceSnapshot" v-if="!isFaceCaptured">
           Take photo
         </button>
