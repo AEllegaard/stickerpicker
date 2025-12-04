@@ -1193,7 +1193,7 @@ onBeforeUnmount(() => {
 
 <template>
   <div id="root">
-    <div style="position: fixed; top: 0; right: 0; z-index: 100; padding: 12px;">
+    <div style="position: fixed; top: 0; right: 0; z-index: 100; padding: 12px 0;">
       <button class="btn-action" @click="resetSticker" style="padding: 0; border-radius: 50%; width:44px; height:44px; display:flex; align-items:center; justify-content:center; background: none; box-shadow: none; border: none;">
         <img src="./assets/redo.svg" alt="Reset" width="20" height="20" style="display:block;" />
       </button>
