@@ -76,35 +76,19 @@ const VID_W = 330, VID_H = 240;
 
 // kategorier og deres assets
 const categories = [
-  { id: 'hats', label: 'Hats' },
   { id: 'glasses', label: 'Glasses' },
-  { id: 'mouths', label: 'Mouths' }
+  { id: 'mouths', label: 'Mouth' },
+  { id: 'hats', label: 'Head wear' },
+  { id: 'hands', label: 'Hands' }
 ];
 
-const selectedCategory = ref('hats');
-const pageIndex = reactive({ hats: 0, glasses: 0, mouths: 0 });
-
-const pagedAssets = computed(() => {
-  const filtered = palette.filter(item => item.category === selectedCategory.value);
-  const itemsPerPage = 8;
-  const page = pageIndex[selectedCategory.value] || 0;
-  const start = page * itemsPerPage;
-  return filtered.slice(start, start + itemsPerPage);
+const assetsByCategory = computed(() => {
+  const grouped = {};
+  for (const cat of categories) {
+    grouped[cat.id] = palette.filter(item => item.category === cat.id);
+  }
+  return grouped;
 });
-const totalPages = computed(() => {
-  const filtered = palette.filter(item => item.category === selectedCategory.value);
-  return Math.max(1, Math.ceil(filtered.length / 8));
-});
-
-function selectCategory(catId) {
-  selectedCategory.value = catId;
-}
-function prevPage() {
-  if (pageIndex[selectedCategory.value] > 0) pageIndex[selectedCategory.value]--;
-}
-function nextPage() {
-  if (pageIndex[selectedCategory.value] < totalPages.value - 1) pageIndex[selectedCategory.value]++;
-}
 
 // farver til randomizer
 const COLORS = [
@@ -1170,26 +1154,15 @@ onBeforeUnmount(() => {
       <div ref="canvasHost" style="min-height: 240px;"></div>
     </div>
 
-    <div class="asset-panel" style="margin-bottom: 18px;">
-      <div class="asset-header">
-        <span class="asset-title">Assets</span>
-  <!-- <button class="randomize-btn" @click="randomizeColors">Randomize colors</button> -->
-      </div>
-      <div class="category-row">
-        <button v-for="cat in categories" :key="cat.id" :class="['cat-btn', { selected: cat.id === selectedCategory }]" @click="selectCategory(cat.id)">{{ cat.label }}</button>
-      </div>
-      <div class="asset-section">
-        <div class="asset-scroll" ref="assetScroll">
+    <div class="asset-panel">
+      <div class="asset-scroll">
+        <div v-for="cat in categories" :key="cat.id" class="category-section">
+          <h3 class="category-title">{{ cat.label }}</h3>
           <div class="asset-grid">
-            <button v-for="item in pagedAssets" :key="item.key" class="asset-thumb" @click="addAsset(item)">
+            <button v-for="item in assetsByCategory[cat.id]" :key="item.key" class="asset-thumb" @click="addAsset(item)">
               <img :src="item.src" :alt="item.key" v-if="item.src" />
             </button>
           </div>
-        </div>
-        <div class="pagination-row">
-    <button class="page-btn" :disabled="pageIndex[selectedCategory.value] === 0" @click="prevPage">&lt;</button>
-    <span class="page-indicator">{{ pageIndex[selectedCategory.value]+1 }}/{{ totalPages }}</span>
-    <button class="page-btn" :disabled="pageIndex[selectedCategory.value] >= totalPages-1" @click="nextPage">&gt;</button>
         </div>
       </div>
     </div>
@@ -1204,37 +1177,90 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+.asset-panel {
+  background: #f9f9f9;
+  border: 2px solid #333;
+  border-radius: 24px;
+  padding: 24px;
+  margin-bottom: 18px;
+  max-height: 600px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.asset-scroll {
+  height: 100%;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+.asset-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.asset-scroll::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+.asset-scroll::-webkit-scrollbar-thumb {
+  background: #ccc;
+  border-radius: 10px;
+}
+
+.asset-scroll::-webkit-scrollbar-thumb:hover {
+  background: #999;
+}
+
+.category-section {
+  margin-bottom: 32px;
+}
+
+.category-title {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0 0 16px 0;
+  color: #333;
+}
+
 .asset-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(64px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
 }
 
 .asset-thumb {
-  min-width: 64px;
-  min-height: 64px;
+  aspect-ratio: 1;
   background: #fff;
-  border: 1px solid #ccc;
-  border-radius: 8px;
+  border: 1px solid #ddd;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 8px;
+}
+
+.asset-thumb:hover {
+  border-color: #999;
+  background: #f5f5f5;
+  transform: scale(1.05);
 }
 
 .asset-thumb img {
-  max-width: 48px;
-  max-height: 48px;
-  border-radius: 6px;
-  background: #f8f8f8;
-  border: 1px solid #eee;
-  display: block;
+  max-width: 90%;
+  max-height: 90%;
+  object-fit: contain;
 }
 
 .canvas { 
   background: #ececec; 
   border: 1px solid #eee; 
   border-radius: 8px; 
-  padding: 8px; }
+  padding: 8px;
+  margin-bottom: 24px;
+}
 
 .loading-overlay {
   position: fixed;
