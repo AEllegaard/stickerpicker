@@ -1340,7 +1340,7 @@ onBeforeUnmount(() => {
   aspect-ratio: 1;
   min-width: 50x;
   min-height: 50px;
-  background-color: #f9f9f9;
+  background-color: #fcfcfc;
   border: none;
   display: flex;
   align-items: center;
