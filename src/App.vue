@@ -1182,6 +1182,7 @@ onBeforeUnmount(() => {
 .asset-panel {
   background: #f9f9f9;
   border: #333 1px solid;
+  border-radius: 24px;
   padding: 24px;
   flex: 1;
   overflow: hidden;
@@ -1233,7 +1234,7 @@ onBeforeUnmount(() => {
 
 .asset-thumb {
   aspect-ratio: 1;
-  border-radius: 10px;
+  border:none;
   display: flex;
   align-items: center;
   justify-content: center;
