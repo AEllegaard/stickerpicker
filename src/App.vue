@@ -1112,6 +1112,8 @@ async function pasteSticker() {
     capturedFrame = null;
     capturedOutline = null;
     decos = [];
+    // Restart face tracking
+    try { faceMesh?.detectStart?.(g.video.elt, (results) => { faces = results || []; }); } catch (e) { console.warn('faceMesh.detectStart fejlede', e); }
   } catch (e) {
     console.warn('Ikke i Miro eller createImage fejlede. Gemmer lokalt.', e);
     const a = document.createElement('a');
@@ -1124,6 +1126,8 @@ async function pasteSticker() {
     capturedFrame = null;
     capturedOutline = null;
     decos = [];
+    // Restart face tracking
+    try { faceMesh?.detectStart?.(g.video.elt, (results) => { faces = results || []; }); } catch (e2) { console.warn('faceMesh.detectStart fejlede', e2); }
   }
 }
 
@@ -1134,7 +1138,6 @@ function takeFaceSnapshot() {
   }
   // Gem den aktuelle video frame
   capturedFrame = g.pg.get();
-  
   // Gem også den aktuelle outline
   g.maskG.clear();
   g.maskG.noStroke();
@@ -1144,14 +1147,14 @@ function takeFaceSnapshot() {
     drawPolygon(g.maskG, fPts);
   }
   capturedOutline = extractUnifiedOutlineFromMask(g.maskG, 128);
-  
   // Gem det aktuelle ansigt så vi kan bruge det i buildStickerPNG
   const capturedFace = faces[0];
-  faces = []; // Stop live face tracking
+  // Stop live face tracking by stopping FaceMesh detection
+  try { faceMesh?.detectStop?.(); } catch (e) { console.warn('faceMesh.detectStop fejlede', e); }
+  faces = [];
   if (capturedFace) {
     faces = [capturedFace]; // Behold kun det captured ansigt
   }
-  
   isFaceCaptured.value = true;
 }
 
