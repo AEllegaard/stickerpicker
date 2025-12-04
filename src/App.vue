@@ -1158,7 +1158,7 @@ function takeFaceSnapshot() {
   isFaceCaptured.value = true;
 }
 
-function resetStickerPicker() {
+function resetSticker() {
   isFaceCaptured.value = false;
   capturedFrame = null;
   capturedOutline = null;
@@ -1194,7 +1194,7 @@ onBeforeUnmount(() => {
 <template>
   <div id="root">
     <div style="position: absolute; top: 18px; left: 18px; z-index: 10;">
-      <button class="btn-action" @click="resetStickerPicker" style="padding: 8px 18px; font-size: 15px; border-radius: 18px;">Reset</button>
+      <button class="btn-action" @click="resetSticker" style="padding: 8px 18px; font-size: 15px; border-radius: 18px;">Reset</button>
     </div>
     <div v-if="loading" class="loading-overlay">
       <div class="spinner"></div>
