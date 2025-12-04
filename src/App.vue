@@ -1177,19 +1177,36 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+#root {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.canvas { 
+  background: #ececec; 
+  border: 1px solid #eee; 
+  border-radius: 8px; 
+  padding: 8px;
+  margin-bottom: 8px;
+  flex-shrink: 0;
+}
+
 .asset-panel {
   background: #f9f9f9;
   border: 2px solid #333;
   border-radius: 24px;
   padding: 24px;
-  margin-bottom: 18px;
-  max-height: 600px;
+  flex: 1;
   overflow: hidden;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
 }
 
 .asset-scroll {
-  height: 100%;
+  flex: 1;
   overflow-y: auto;
   padding-right: 8px;
 }
@@ -1252,14 +1269,6 @@ onBeforeUnmount(() => {
   max-width: 90%;
   max-height: 90%;
   object-fit: contain;
-}
-
-.canvas { 
-  background: #ececec; 
-  border: 1px solid #eee; 
-  border-radius: 8px; 
-  padding: 8px;
-  margin-bottom: 24px;
 }
 
 .loading-overlay {
