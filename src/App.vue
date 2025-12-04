@@ -54,6 +54,7 @@ let faces = [];
 // deco-objekter på lærredet
 let decos = [];
 let capturedFrame = null; // for frozen photo
+let capturedOutline = null; // for frozen outline
 // thumbnail positions for palette hit detection
 let thumbPositions = new Map();
 // pagination state per category
@@ -294,7 +295,13 @@ const makeSketch = (p) => {
       p.image(g.maskedImg, 0, 0, VID_W, VID_H);
 
       // samlet kontur udledt af masken
-      const outline = extractUnifiedOutlineFromMask(g.maskG, 128);
+      let outline = extractUnifiedOutlineFromMask(g.maskG, 128);
+      
+      // hvis face er frozen, brug den gemte outline
+      if (isFaceCaptured.value && capturedOutline) {
+        outline = capturedOutline;
+      }
+      
       if (outline && outline.length > 1) {
         drawPolyline(p, outline);
       }
@@ -1103,6 +1110,7 @@ async function pasteSticker() {
     // Reset after successful paste
     isFaceCaptured.value = false;
     capturedFrame = null;
+    capturedOutline = null;
     decos = [];
   } catch (e) {
     console.warn('Ikke i Miro eller createImage fejlede. Gemmer lokalt.', e);
@@ -1114,6 +1122,7 @@ async function pasteSticker() {
     // Reset after successful save
     isFaceCaptured.value = false;
     capturedFrame = null;
+    capturedOutline = null;
     decos = [];
   }
 }
@@ -1125,6 +1134,17 @@ function takeFaceSnapshot() {
   }
   // Gem den aktuelle video frame
   capturedFrame = g.pg.get();
+  
+  // Gem også den aktuelle outline
+  g.maskG.clear();
+  g.maskG.noStroke();
+  g.maskG.fill(255);
+  if (faces.length > 0) {
+    const fPts = faceExpandedOutlinePoints(faces[0]);
+    drawPolygon(g.maskG, fPts);
+  }
+  capturedOutline = extractUnifiedOutlineFromMask(g.maskG, 128);
+  
   isFaceCaptured.value = true;
 }
 
