@@ -1145,6 +1145,13 @@ function takeFaceSnapshot() {
   }
   capturedOutline = extractUnifiedOutlineFromMask(g.maskG, 128);
   
+  // Gem det aktuelle ansigt så vi kan bruge det i buildStickerPNG
+  const capturedFace = faces[0];
+  faces = []; // Stop live face tracking
+  if (capturedFace) {
+    faces = [capturedFace]; // Behold kun det captured ansigt
+  }
+  
   isFaceCaptured.value = true;
 }
 
