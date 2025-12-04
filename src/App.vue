@@ -1234,8 +1234,8 @@ onBeforeUnmount(() => {
 
 .asset-thumb {
   aspect-ratio: 1;
-  min-width: 120px;
-  min-height: 120px;
+  min-width: 85px;
+  min-height: 85px;
   background-color: #f9f9f9;
   border: none;
   display: flex;
