@@ -1193,9 +1193,9 @@ onBeforeUnmount(() => {
 
 <template>
   <div id="root">
-    <div style="position: fixed; top: 0; left: 0; z-index: 100; padding: 12px;">
-      <button class="btn-action" @click="resetSticker" style="padding: 0; border-radius: 50%; width:44px; height:44px; display:flex; align-items:left; justify-content:flex-end; background: none; box-shadow: none; border: none;">
-        <img src="./assets/redo.svg" alt="Reset" width="25" height="25" style="display:block;" />
+    <div style="position: fixed; top: 0; right: 0; z-index: 100; padding: 12px;">
+      <button class="btn-action" @click="resetSticker" style="padding: 0; border-radius: 50%; width:44px; height:44px; display:flex; align-items:center; justify-content:center; background: none; box-shadow: none; border: none;">
+        <img src="./assets/redo.svg" alt="Reset" width="20" height="20" style="display:block;" />
       </button>
     </div>
     <div v-if="loading" class="loading-overlay">
@@ -1265,7 +1265,7 @@ onBeforeUnmount(() => {
   color: #fff;
   border: none;
   border-radius: 24px;
-  padding: 10px 20px;
+  padding: 8px 10px;
   font-size: 10px;
   font-weight: 600;
   cursor: pointer;
