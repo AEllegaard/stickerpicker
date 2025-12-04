@@ -1194,11 +1194,11 @@ onBeforeUnmount(() => {
 .asset-scroll {
   flex: 1;
   overflow-y: auto;
-  padding-right: 8px;
+  padding-right: 5px;
 }
 
 .asset-scroll::-webkit-scrollbar {
-  width: 8px;
+  width: 4px;
 }
 
 .asset-scroll::-webkit-scrollbar-track {
