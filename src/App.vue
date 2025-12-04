@@ -53,6 +53,7 @@ let faces = [];
 
 // deco-objekter på lærredet
 let decos = [];
+let capturedFrame = null; // for frozen photo
 // thumbnail positions for palette hit detection
 let thumbPositions = new Map();
 // pagination state per category
@@ -261,13 +262,16 @@ const makeSketch = (p) => {
     g.maskG.noStroke();
     g.maskG.fill(255);
 
-    // spejl video ind i pg
-    if (g.video) {
+    // spejl video ind i pg (eller brug captured frame hvis face er frozen)
+    if (g.video && !isFaceCaptured.value) {
       g.pg.push();
       g.pg.translate(VID_W, 0);
       g.pg.scale(-1, 1);
       g.pg.image(g.video, 0, 0, VID_W, VID_H);
       g.pg.pop();
+    } else if (capturedFrame && isFaceCaptured.value) {
+      // vis den frosne frame
+      g.pg.image(capturedFrame, 0, 0, VID_W, VID_H);
     }
 
   // No asset panel or palette rendering in canvas
@@ -1098,6 +1102,7 @@ async function pasteSticker() {
     
     // Reset after successful paste
     isFaceCaptured.value = false;
+    capturedFrame = null;
     decos = [];
   } catch (e) {
     console.warn('Ikke i Miro eller createImage fejlede. Gemmer lokalt.', e);
@@ -1108,6 +1113,7 @@ async function pasteSticker() {
     
     // Reset after successful save
     isFaceCaptured.value = false;
+    capturedFrame = null;
     decos = [];
   }
 }
@@ -1117,6 +1123,8 @@ function takeFaceSnapshot() {
     console.warn('Ingen ansigt fundet');
     return;
   }
+  // Gem den aktuelle video frame
+  capturedFrame = g.pg.get();
   isFaceCaptured.value = true;
 }
 
