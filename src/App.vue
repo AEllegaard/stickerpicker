@@ -1221,10 +1221,10 @@ onBeforeUnmount(() => {
           <button class="btn-action" style="padding:0; background: none;" @click="increaseAssetSize">
             <img src="./assets/plus.svg" alt="Increase" width="22" height="22" style="display:inline; vertical-align:middle;" />
           </button>
-          <button class="btn-action" style="padding:0; background: none;" @click="undoLastAsset">
-            <img src="./assets/undo.svg" alt="Undo" width="22" height="22" style="display:inline; vertical-align:middle;" />
-          </button>
         </div>
+        <button class="btn-action" style="padding:0; background: none;" @click="undoLastAsset">
+          <img src="./assets/undo.svg" alt="Undo" width="22" height="22" style="display:inline; vertical-align:middle;" />
+        </button>
         <button class="btn-action" @click="takeFaceSnapshot" v-if="!isFaceCaptured">
           Take photo
         </button>
