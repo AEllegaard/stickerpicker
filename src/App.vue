@@ -1222,15 +1222,17 @@ onBeforeUnmount(() => {
             <img src="./assets/plus.svg" alt="Increase" width="22" height="22" style="display:inline; vertical-align:middle;" />
           </button>
         </div>
-        <button class="btn-action" style="padding:0; background: none;" @click="undoLastAsset">
-          <img src="./assets/undo.svg" alt="Undo" width="22" height="22" style="display:inline; vertical-align:middle;" />
-        </button>
-        <button class="btn-action" @click="takeFaceSnapshot" v-if="!isFaceCaptured">
-          Take photo
-        </button>
-        <button class="btn-action" @click="pasteSticker" v-if="isFaceCaptured">
-          Save to board
-        </button>
+        <div class="gruppe" style="display: flex; flex-direction: row;">
+          <button class="btn-action" style="padding:0; background: none;" @click="undoLastAsset">
+            <img src="./assets/undo.svg" alt="Undo" width="22" height="22" style="display:inline; vertical-align:middle;" />
+          </button>
+          <button class="btn-action" @click="takeFaceSnapshot" v-if="!isFaceCaptured">
+            Take photo
+          </button>
+          <button class="btn-action" @click="pasteSticker" v-if="isFaceCaptured">
+            Save to board
+          </button>
+        </div>
       </div>
     </div>
 
