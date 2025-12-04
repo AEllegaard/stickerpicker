@@ -1247,7 +1247,7 @@ onBeforeUnmount(() => {
 }
 
 .asset-thumb:hover {
-  transform: scale(1.4);
+  transform: scale(1.3);
 }
 
 .asset-thumb img {
