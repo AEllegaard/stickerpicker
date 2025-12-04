@@ -1250,8 +1250,8 @@ onBeforeUnmount(() => {
 
 .button-group {
   position: absolute;
-  right: 20px;
-  top: 50%;
+  right: 10px;
+  top: 70%;
   transform: translateY(-50%);
   display: flex;
   flex-direction: column;
@@ -1264,7 +1264,7 @@ onBeforeUnmount(() => {
   border: none;
   border-radius: 24px;
   padding: 10px 20px;
-  font-size: 14px;
+  font-size: 10px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
