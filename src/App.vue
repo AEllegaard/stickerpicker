@@ -1229,7 +1229,7 @@ onBeforeUnmount(() => {
 .asset-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
+  gap: 8px;
 }
 
 .asset-thumb {
