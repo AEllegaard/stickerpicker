@@ -1194,7 +1194,7 @@ onBeforeUnmount(() => {
 <template>
   <div id="root">
     <div style="position: absolute; top: 18px; left: 18px; z-index: 10;">
-      <button class="btn-action" @click="resetSticker" style="padding: 8px; border-radius: 18px; width:40px; height:40px; display:flex; align-items:center; justify-content:center;">
+      <button class="btn-action resets" @click="resetSticker" style="padding: 8px; border-radius: 18px; width:40px; height:40px; display:flex; align-items:center; justify-content:center;">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Reset">
           <circle cx="12" cy="12" r="10" stroke="black" stroke-width="2" fill="none"/>
           <path d="M8 12a4 4 0 1 1 4 4" stroke="black" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
@@ -1275,6 +1275,10 @@ onBeforeUnmount(() => {
   cursor: pointer;
   transition: all 0.2s ease;
   white-space: nowrap;
+}
+
+.btn-action resets{
+  background-color: none;
 }
 
 .btn-action:hover {
