@@ -1282,7 +1282,7 @@ onBeforeUnmount(() => {
 }
 
 .button-primary{
-  color: black;
+  background-color: black;
   border-radius: 50px;
 }
 </style>
