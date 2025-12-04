@@ -1222,7 +1222,7 @@ onBeforeUnmount(() => {
             <img src="./assets/plus.svg" alt="Increase" width="22" height="22" style="display:inline; vertical-align:middle;" />
           </button>
         </div>
-        <div class="gruppe" style="display: flex; flex-direction: row;">
+        <div class="gruppe" style="display: flex; flex-direction: row; gap: 8px;">
           <button class="btn-action" style="padding:0; background: none;" @click="undoLastAsset">
             <img src="./assets/undo.svg" alt="Undo" width="22" height="22" style="display:inline; vertical-align:middle;" />
           </button>
