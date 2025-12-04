@@ -1158,6 +1158,15 @@ function takeFaceSnapshot() {
   isFaceCaptured.value = true;
 }
 
+function resetStickerPicker() {
+  isFaceCaptured.value = false;
+  capturedFrame = null;
+  capturedOutline = null;
+  decos = [];
+  // Restart face tracking
+  try { faceMesh?.detectStart?.(g.video.elt, (results) => { faces = results || []; }); } catch (e) { console.warn('faceMesh.detectStart fejlede', e); }
+}
+
 onMounted(async () => {
   const p5Mod = await import('p5');
   P5 = p5Mod.default;
@@ -1184,6 +1193,9 @@ onBeforeUnmount(() => {
 
 <template>
   <div id="root">
+    <div style="position: absolute; top: 18px; left: 18px; z-index: 10;">
+      <button class="btn-action" @click="resetStickerPicker" style="padding: 8px 18px; font-size: 15px; border-radius: 18px;">Reset</button>
+    </div>
     <div v-if="loading" class="loading-overlay">
       <div class="spinner"></div>
       <div style="margin-top:16px; font-size:18px; color:#444; text-align: center;">
