@@ -1213,8 +1213,10 @@ onBeforeUnmount(() => {
     </div>
     <div class="canvas" style="margin-bottom: 2px;">
       <div ref="canvasHost" style="min-height: 240px;"></div>
-      <div class="button-group">
-        <img src="./assets/undo.svg" alt="Undo" width="22" height="22" style="margin-bottom: 10px; cursor:pointer;" @click="undoLastAsset" />
+      <div class="button-group" style="flex-direction: row; gap: 12px; align-items: center; justify-content: flex-end;">
+        <button class="btn-action" style="padding: 8px 10px; background: none;" @click="undoLastAsset">
+          <img src="./assets/undo.svg" alt="Undo" width="22" height="22" style="display:inline; vertical-align:middle; margin-right:2px;" />
+        </button>
         <button class="btn-action" @click="takeFaceSnapshot" v-if="!isFaceCaptured">
           Take photo
         </button>
