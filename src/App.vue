@@ -1194,7 +1194,7 @@ onBeforeUnmount(() => {
 <template>
   <div id="root">
     <div style="position: absolute; top: 18px; left: 18px; z-index: 10;">
-      <button class="btn-action" @click="resetStickerPicker" style="padding: 8px; border-radius: 18px; width:40px; height:40px; display:flex; align-items:center; justify-content:center; background: none;">
+      <button class="btn-action" @click="resetSticker" style="padding: 8px; border-radius: 18px; width:40px; height:40px; display:flex; align-items:center; justify-content:center; background: none;">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Reset">
           <path d="M12 5v2a7 7 0 1 1-7 7" stroke="black" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
           <polyline points="17 8 12 3 7 8" stroke="black" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
