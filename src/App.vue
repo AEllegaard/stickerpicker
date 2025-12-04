@@ -1194,7 +1194,7 @@ onBeforeUnmount(() => {
 .asset-scroll {
   flex: 1;
   overflow-y: auto;
-  padding-right: 5px;
+  padding-right: 2px;
 }
 
 .asset-scroll::-webkit-scrollbar {
@@ -1245,12 +1245,12 @@ onBeforeUnmount(() => {
 }
 
 .asset-thumb:hover {
-  transform: scale(1.1);
+  transform: scale(1.2);
 }
 
 .asset-thumb img {
-  max-width: 90%;
-  max-height: 90%;
+  max-width: 100%;
+  max-height: 100%;
   object-fit: contain;
 }
 
