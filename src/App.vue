@@ -1424,7 +1424,12 @@ onBeforeUnmount(() => {
   font-size: 18px;
   font-weight: 700;
   margin: 0 0 16px 0;
+  padding: 12px 0;
   color: #333;
+  background: #fcfcfc;
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
 .asset-grid {
