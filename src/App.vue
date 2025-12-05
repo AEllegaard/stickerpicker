@@ -199,6 +199,9 @@ class Deco {
   stopDrag() { this.dragging = false; }
   // peger decor mod centrum, og flipper på midten
   angleToOrigin() {
+    // Hands should not rotate
+    if (this.category === 'hands') return 0;
+    
     if (this.x > VID_W/2 + 20){
       return Math.atan2(this.y, this.x);
     } if (this.x < VID_W/2 - 20){
@@ -1078,13 +1081,18 @@ async function buildStickerPNG(p) {
     let angle = 0;
     const decoX = d.x;
     const decoY = d.y;
-    if (decoX > VID_W/2 + 20) {
-      angle = Math.atan2(decoY, decoX);
-    } else if (decoX < VID_W/2 - 20) {
-      angle = Math.atan2(-decoY, decoX);
-    } else {
-      angle = 0;
+    
+    // Hands should not rotate
+    if (d.category !== 'hands') {
+      if (decoX > VID_W/2 + 20) {
+        angle = Math.atan2(decoY, decoX);
+      } else if (decoX < VID_W/2 - 20) {
+        angle = Math.atan2(-decoY, decoX);
+      } else {
+        angle = 0;
+      }
     }
+    
     const dx = decoX - centerX + size/2;
     const dy = decoY - centerY + size/2;
 
