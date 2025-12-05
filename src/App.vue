@@ -1428,7 +1428,7 @@ onBeforeUnmount(() => {
   color: #333;
   background: #fcfcfc;
   position: sticky;
-  top: 0;
+  top: -8px;
   z-index: 10;
 }
 
