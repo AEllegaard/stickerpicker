@@ -1409,7 +1409,7 @@ onBeforeUnmount(() => {
 }
 
 .effectBtn{
-  background-color: black;
-  border-radius: 50px;
+  background-color: black !important;
+  border-radius: 50px !important; 
 }
 </style>
