@@ -1411,6 +1411,6 @@ onBeforeUnmount(() => {
 .effectBtn{
   background-color: black !important;
   border-radius: 50px !important; 
-  padding: 6px !important;
+  padding: 3px !important;
 }
 </style>
