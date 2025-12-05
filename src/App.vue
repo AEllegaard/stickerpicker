@@ -1173,6 +1173,22 @@ function undoLastAsset() {
   }
 }
 
+function decreaseAssetSize() {
+  if (decos.length > 0) {
+    const lastDeco = decos[decos.length - 1];
+    lastDeco.w *= 0.9;
+    lastDeco.h *= 0.9;
+  }
+}
+
+function increaseAssetSize() {
+  if (decos.length > 0) {
+    const lastDeco = decos[decos.length - 1];
+    lastDeco.w *= 1.1;
+    lastDeco.h *= 1.1;
+  }
+}
+
 onMounted(async () => {
   const p5Mod = await import('p5');
   P5 = p5Mod.default;
