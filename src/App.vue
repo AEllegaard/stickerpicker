@@ -1365,6 +1365,7 @@ onBeforeUnmount(() => {
   overflow-y: auto;
   overflow-x: hidden;
   padding-right: 2px;
+   margin-bottom: 22px;
 }
 
 .asset-scroll::-webkit-scrollbar {
