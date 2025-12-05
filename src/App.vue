@@ -1213,7 +1213,7 @@ onBeforeUnmount(() => {
     </div>
     <div class="canvas" style="margin-bottom: 2px;">
       <div ref="canvasHost" style="min-height: 240px;"></div>
-      <div class="button-group" style="display:flex; gap: 12px; align-items: flex-end; justify-content: flex-end;">
+      <div class="button-group" style="display:flex; gap: 6px; align-items: flex-end; justify-content: flex-end;">
         <div style="display: flex; flex-direction: column; gap: 6px;">
           <button class="btn-action effectBtn" style="padding:0; background: none;" @click="decreaseAssetSize">
             <img src="./assets/minus.svg" alt="Decrease" width="16" height="16" style="display:inline; vertical-align:middle;" />
@@ -1272,7 +1272,7 @@ onBeforeUnmount(() => {
 .button-group {
   position: absolute;
   right: 10px;
-  top: 70%;
+  top: 80%;
   transform: translateY(-50%);
   display: flex;
   flex-direction: column;
