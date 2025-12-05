@@ -1042,7 +1042,7 @@ async function buildStickerPNG(p) {
   
   const faceW = maxX - minX;
   const faceH = maxY - minY;
-  const padding = Math.max(faceW, faceH) * 0.05; // minimal 5% padding
+  const padding = Math.max(faceW, faceH) * 0.02; // minimal 2% padding
   const sizeNoScale = Math.max(faceW, faceH) + padding * 2;
   const size = (sizeNoScale * 2) | 0; // scale up 2x for pixelDensity quality
   const centerX = (minX + maxX) / 2;
