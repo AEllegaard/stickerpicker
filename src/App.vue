@@ -1216,10 +1216,10 @@ onBeforeUnmount(() => {
       <div class="button-group" style="display:flex; gap: 12px; align-items: flex-end; justify-content: flex-end;">
         <div style="display: flex; flex-direction: column; gap: 12px;">
           <button class="btn-action effectBtn" style="padding:0; background: none;" @click="decreaseAssetSize">
-            <img src="./assets/minus.svg" alt="Decrease" width="22" height="22" style="display:inline; vertical-align:middle;" />
+            <img src="./assets/minus.svg" alt="Decrease" width="16" height="16" style="display:inline; vertical-align:middle;" />
           </button>
           <button class="btn-action effectBtn" style="padding:0; background: none;" @click="increaseAssetSize">
-            <img src="./assets/plus.svg" alt="Increase" width="22" height="22" style="display:inline; vertical-align:middle;" />
+            <img src="./assets/plus.svg" alt="Increase" width="16" height="16" style="display:inline; vertical-align:middle;" />
           </button>
         </div>
         <div class="gruppe" style="display: flex; flex-direction: row; gap: 8px;">
@@ -1411,5 +1411,6 @@ onBeforeUnmount(() => {
 .effectBtn{
   background-color: black !important;
   border-radius: 50px !important; 
+  padding: 6px !important;
 }
 </style>
