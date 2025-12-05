@@ -173,13 +173,14 @@ async function probeMiro() {
 
 // simpelt deco-objekt
 class Deco {
-  constructor(p, img, x, y, w, h, color = null) {
+  constructor(p, img, x, y, w, h, color = null, category = null) {
     this.p = p;
     this.img = img;
     this.x = x; this.y = y;
     this.w = w; this.h = h;
     this.dragging = false;
     this._dx = 0; this._dy = 0;
+    this.category = category;
   // this.color = color; // farve skift udkommenteret
   }
   contains(mx, my) {
@@ -310,6 +311,13 @@ const makeSketch = (p) => {
       drawPolygon(g.maskG, fPts);
     }
 
+    // Separate decos by category: hands go behind face, others on top
+    const handDecos = decos.filter(d => d.category === 'hands');
+    const otherDecos = decos.filter(d => d.category !== 'hands');
+
+    // Render hands first (behind face)
+    for (const d of handDecos) d.draw();
+
     if (anyMask) {
       // anvend masken
       const masked = g.pg.get();
@@ -332,8 +340,8 @@ const makeSketch = (p) => {
       g.maskedImg = null;
     }
 
-    // tegn alle decos ovenpå
-    for (const d of decos) d.draw();
+    // tegn andre decos ovenpå (ikke hænder)
+    for (const d of otherDecos) d.draw();
   };
 
   // klik i paletten: opret nyt deco
@@ -943,7 +951,7 @@ function addAsset(item) {
     size = Math.max(160, Math.min(size, 260));
   }
   // Always use default color (null disables randomization)
-  decos.push(new Deco(pInstance, img, x, y, size, size, null));
+  decos.push(new Deco(pInstance, img, x, y, size, size, null, item.category));
 }
 
 function segmentIntersectsRect(a, b, rect){
