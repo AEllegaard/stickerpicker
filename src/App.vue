@@ -1416,9 +1416,6 @@ onBeforeUnmount(() => {
   background: #999;
 }
 
-.category-section {
-  margin-bottom: 32px;
-}
 
 .category-title {
   font-size: 18px;
