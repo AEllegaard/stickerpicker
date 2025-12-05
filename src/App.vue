@@ -1075,13 +1075,12 @@ async function buildStickerPNG(p) {
   }
   square.endShape(square.CLOSE);
 
-  const videoCopy = g.pg.get();
-  videoCopy.mask(tmpMask.get());
-  square.image(videoCopy, offsetX, offsetY);
+  // Separate decos by category: hands go behind face, others on top
+  const handDecos = decos.filter(d => d.category === 'hands');
+  const otherDecos = decos.filter(d => d.category !== 'hands');
 
-  // Draw decos on top
-  for (const d of decos) {
-   // Brug samme rotationslogik som preview
+  // Draw hands first (behind face)
+  for (const d of handDecos) {
     let angle = 0;
     const decoX = d.x;
     const decoY = d.y;
@@ -1100,7 +1099,39 @@ async function buildStickerPNG(p) {
     square.rotate(angle);
     square.imageMode(square.CENTER);
     
-    // Apply color filter
+    const colorFilter = getColorFilterFromHex(d.color);
+    square.drawingContext.filter = colorFilter;
+    square.image(d.img, 0, 0, d.w, d.h);
+    square.drawingContext.filter = 'none';
+    
+    square.pop();
+  }
+
+  // Draw face on top of hands
+  const videoCopy = g.pg.get();
+  videoCopy.mask(tmpMask.get());
+  square.image(videoCopy, offsetX, offsetY);
+
+  // Draw other decos on top (not hands)
+  for (const d of otherDecos) {
+    let angle = 0;
+    const decoX = d.x;
+    const decoY = d.y;
+    if (decoX > VID_W/2 + 20) {
+      angle = Math.atan2(decoY, decoX);
+    } else if (decoX < VID_W/2 - 20) {
+      angle = Math.atan2(-decoY, decoX);
+    } else {
+      angle = 0;
+    }
+    const dx = decoX - centerX + size/2;
+    const dy = decoY - centerY + size/2;
+
+    square.push();
+    square.translate(dx, dy);
+    square.rotate(angle);
+    square.imageMode(square.CENTER);
+    
     const colorFilter = getColorFilterFromHex(d.color);
     square.drawingContext.filter = colorFilter;
     square.image(d.img, 0, 0, d.w, d.h);
