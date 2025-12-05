@@ -35,6 +35,17 @@ import PinkmouthSrc from './assets/svg/Pinkmouth.svg';
 import PinktoungeoutSrc from './assets/svg/Pinktoungeout.svg';
 import UnderbiteSrc from './assets/svg/Underbite.svg';
 
+//Hands
+import HoldingHeartSrc from './assets/svg/HoldingHeart.svg';
+import IloveyouSrc from './assets/svg/Iloveyou.svg';
+import KawaiiHeartSrc from './assets/svg/KawaiiHeart.svg';
+import MillenialHeartSrc from './assets/svg/MillenialHeart.svg';
+import PerfectSrc from './assets/svg/Perfect.svg';
+import LeftPerfectSrc from './assets/svg/LeftPerfect.svg';
+import RightPerfectSrc from './assets/svg/RightPerfect.svg';
+import RockOnSrc from './assets/svg/RockOn.svg';
+import ThumbsUpSrc from './assets/svg/Thumbsup.svg';
+import WaveSrc from './assets/svg/Wave.svg';
 
 const canvasHost = ref(null);
 
@@ -126,7 +137,19 @@ const palette = [
   { category: 'mouths', key: 'Opensmile', src: OpensmileSrc, x: 175, y: 440, w: 60, h: 60 },
   { category: 'mouths', key: 'Pinkmouth', src: PinkmouthSrc, x: 235, y: 440, w: 60, h: 60 },
   { category: 'mouths', key: 'Pinktoungeout', src: PinktoungeoutSrc, x: 295, y: 440, w: 60, h: 60 },
-  { category: 'mouths', key: 'Underbite', src: UnderbiteSrc, x: 55, y: 500, w: 60, h: 60 }
+  { category: 'mouths', key: 'Underbite', src: UnderbiteSrc, x: 55, y: 500, w: 60, h: 60 },
+
+  //Hands
+  { category: 'hands', key: 'HoldingHeart', src: HoldingHeartSrc, x: 115, y: 320, w: 60, h: 60 },
+  { category: 'hands', key: 'Iloveyou', src: IloveyouSrc, x: 115, y: 320, w: 60, h: 60 },
+  { category: 'hands', key: 'KawaiiHeart', src: KawaiiHeartSrc, x: 115, y: 320, w: 60, h: 60 },
+  { category: 'hands', key: 'MillenialHeart', src: MillenialHeartSrc, x: 115, y: 320, w: 60, h: 60 },
+  { category: 'hands', key: 'Perfect', src: PerfectSrc, x: 115, y: 320, w: 60, h: 60 },
+  { category: 'hands', key: 'LeftPerfect', src: LeftPerfectSrc, x: 115, y: 320, w: 60, h: 60 },
+  { category: 'hands', key: 'RightPerfect', src: RightPerfectSrc, x: 115, y: 320, w: 60, h: 60 },
+  { category: 'hands', key: 'RockOn', src: RockOnSrc, x: 115, y: 320, w: 60, h: 60 },
+  { category: 'hands', key: 'ThumbsUp', src: ThumbsUpSrc, x: 115, y: 320, w: 60, h: 60 },
+  { category: 'hands', key: 'Wave', src: WaveSrc, x: 115, y: 320, w: 60, h: 60 }
 ];
 
 // hjælpefunktion til at konvertere hex-farve til HSL og returnere CSS filter
