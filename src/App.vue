@@ -311,13 +311,6 @@ const makeSketch = (p) => {
       drawPolygon(g.maskG, fPts);
     }
 
-    // Separate decos by category: hands go behind face, others on top
-    const handDecos = decos.filter(d => d.category === 'hands');
-    const otherDecos = decos.filter(d => d.category !== 'hands');
-
-    // Render hands first (behind face)
-    for (const d of handDecos) d.draw();
-
     if (anyMask) {
       // anvend masken
       const masked = g.pg.get();
@@ -340,8 +333,8 @@ const makeSketch = (p) => {
       g.maskedImg = null;
     }
 
-    // tegn andre decos ovenpå (ikke hænder)
-    for (const d of otherDecos) d.draw();
+    // tegn alle decos ovenpå
+    for (const d of decos) d.draw();
   };
 
   // klik i paletten: opret nyt deco
@@ -1075,45 +1068,13 @@ async function buildStickerPNG(p) {
   }
   square.endShape(square.CLOSE);
 
-  // Separate decos by category: hands go behind face, others on top
-  const handDecos = decos.filter(d => d.category === 'hands');
-  const otherDecos = decos.filter(d => d.category !== 'hands');
-
-  // Draw hands first (behind face)
-  for (const d of handDecos) {
-    let angle = 0;
-    const decoX = d.x;
-    const decoY = d.y;
-    if (decoX > VID_W/2 + 20) {
-      angle = Math.atan2(decoY, decoX);
-    } else if (decoX < VID_W/2 - 20) {
-      angle = Math.atan2(-decoY, decoX);
-    } else {
-      angle = 0;
-    }
-    const dx = decoX - centerX + size/2;
-    const dy = decoY - centerY + size/2;
-
-    square.push();
-    square.translate(dx, dy);
-    square.rotate(angle);
-    square.imageMode(square.CENTER);
-    
-    const colorFilter = getColorFilterFromHex(d.color);
-    square.drawingContext.filter = colorFilter;
-    square.image(d.img, 0, 0, d.w, d.h);
-    square.drawingContext.filter = 'none';
-    
-    square.pop();
-  }
-
-  // Draw face on top of hands
   const videoCopy = g.pg.get();
   videoCopy.mask(tmpMask.get());
   square.image(videoCopy, offsetX, offsetY);
 
-  // Draw other decos on top (not hands)
-  for (const d of otherDecos) {
+  // Draw decos on top
+  for (const d of decos) {
+   // Brug samme rotationslogik som preview
     let angle = 0;
     const decoX = d.x;
     const decoY = d.y;
